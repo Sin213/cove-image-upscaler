@@ -1,0 +1,127 @@
+{
+  "name": "cove-upscaler",
+  "version": "1.2.0",
+  "description": "Desktop image upscaler for photos and anime, powered by NCNN Vulkan. Linux + Windows builds from a single repo.",
+  "homepage": "https://github.com/Sin213/cove-upscaler",
+  "main": "dist-electron/main.js",
+  "author": {
+    "name": "Cove",
+    "email": "79215527+Sin213@users.noreply.github.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "dev": "concurrently -k -s first -n VITE,ELECTRON \"npm:dev:renderer\" \"npm:dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:electron": "tsc -p tsconfig.electron.json && wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .",
+    "build:renderer": "vite build",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "build": "npm run build:renderer && npm run build:electron",
+    "dist": "npm run build && electron-builder",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "postinstall": "node scripts/download-binaries.mjs || echo \"postinstall: binary download skipped\"",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "yauzl": "^3.2.0",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "@types/yauzl": "^2.10.3",
+    "@vitejs/plugin-react": "^4.3.2",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^32.1.2",
+    "electron-builder": "^25.0.5",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.cove.upscaler",
+    "productName": "Cove Upscaler",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist-electron/**/*",
+      "dist/**/*",
+      "cove_icon.png",
+      "cove_icon.ico",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/bin/${os}",
+        "to": "bin"
+      },
+      {
+        "from": "resources/models",
+        "to": "models"
+      }
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "cove_icon.png",
+      "category": "Graphics",
+      "maintainer": "Cove <79215527+Sin213@users.noreply.github.com>",
+      "artifactName": "Cove-Upscaler-${version}-${arch}.${ext}"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "cove_icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Cove Upscaler",
+      "artifactName": "Cove-Upscaler-${version}-Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Cove-Upscaler-${version}-Portable.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "cove_icon.png",
+      "category": "public.app-category.graphics-design"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Sin213",
+      "repo": "cove-upscaler",
+      "releaseType": "release"
+    }
+  }
+}

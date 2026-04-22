@@ -1,0 +1,54 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --cove-bg: 247 248 250;
+  --cove-surface: 255 255 255;
+  --cove-border: 222 226 232;
+  --cove-text: 24 30 38;
+  --cove-muted: 95 106 120;
+  --cove-accent: 36 124 224;
+  --cove-success: 22 138 73;
+  --cove-danger: 215 58 73;
+  --cove-scrollbar: 200 207 215;
+  --cove-scrollbar-hover: 170 180 190;
+}
+
+.dark {
+  --cove-bg: 15 20 25;
+  --cove-surface: 26 32 41;
+  --cove-border: 42 52 65;
+  --cove-text: 230 237 243;
+  --cove-muted: 139 148 158;
+  --cove-accent: 88 166 255;
+  --cove-success: 63 185 80;
+  --cove-danger: 248 81 73;
+  --cove-scrollbar: 42 52 65;
+  --cove-scrollbar-hover: 58 68 81;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--cove-scrollbar));
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--cove-scrollbar-hover));
+}
