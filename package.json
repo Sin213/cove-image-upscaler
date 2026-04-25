@@ -1,8 +1,8 @@
 {
-  "name": "cove-upscaler",
-  "version": "1.2.0",
+  "name": "cove-image-upscaler",
+  "version": "2.0.0",
   "description": "Desktop image upscaler for photos and anime, powered by NCNN Vulkan. Linux + Windows builds from a single repo.",
-  "homepage": "https://github.com/Sin213/cove-upscaler",
+  "homepage": "https://github.com/Sin213/cove-image-upscaler",
   "main": "dist-electron/main.js",
   "author": {
     "name": "Cove",
@@ -17,8 +17,10 @@
     "build:electron": "tsc -p tsconfig.electron.json",
     "build": "npm run build:renderer && npm run build:electron",
     "dist": "npm run build && electron-builder",
-    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:linux": "npm run build && electron-builder --linux AppImage",
+    "dist:linux:full": "npm run build && electron-builder --linux",
     "dist:win": "npm run build && electron-builder --win",
+    "dist:win:portable": "npm run build && electron-builder --win portable",
     "dist:mac": "npm run build && electron-builder --mac",
     "postinstall": "node scripts/download-binaries.mjs || echo \"postinstall: binary download skipped\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit"
@@ -48,8 +50,8 @@
     "wait-on": "^8.0.1"
   },
   "build": {
-    "appId": "com.cove.upscaler",
-    "productName": "Cove Upscaler",
+    "appId": "com.cove.imageupscaler",
+    "productName": "Cove Image Upscaler",
     "directories": {
       "output": "release"
     },
@@ -78,7 +80,7 @@
       "icon": "cove_icon.png",
       "category": "Graphics",
       "maintainer": "Cove <79215527+Sin213@users.noreply.github.com>",
-      "artifactName": "Cove-Upscaler-${version}-${arch}.${ext}"
+      "artifactName": "Cove-Image-Upscaler-${version}-${arch}.${ext}"
     },
     "win": {
       "target": [
@@ -103,11 +105,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Cove Upscaler",
-      "artifactName": "Cove-Upscaler-${version}-Setup.${ext}"
+      "shortcutName": "Cove Image Upscaler",
+      "artifactName": "Cove-Image-Upscaler-${version}-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "Cove-Upscaler-${version}-Portable.${ext}"
+      "artifactName": "Cove-Image-Upscaler-${version}-Portable.${ext}"
     },
     "mac": {
       "target": [
@@ -120,7 +122,7 @@
     "publish": {
       "provider": "github",
       "owner": "Sin213",
-      "repo": "cove-upscaler",
+      "repo": "cove-image-upscaler",
       "releaseType": "release"
     }
   }

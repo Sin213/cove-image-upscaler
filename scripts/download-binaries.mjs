@@ -1,12 +1,15 @@
 #!/usr/bin/env node
-// Fetches NCNN Vulkan Windows binaries + models.
-// Idempotent: skips when target files already exist.
-// Non-fatal on failure so `npm install` does not break on a flaky network.
+// Fetches NCNN Vulkan binaries (realesrgan + realcugan) and shared model
+// files for the host OS into resources/bin/<os>/ and resources/models/.
 //
-// This repo targets Windows only. The URLs below pin the Windows zips
-// from each upstream project so the build is reproducible from any host OS.
+// Defaults to the host OS so `npm install` on Linux only pulls the Linux
+// zip, not the Windows/macOS ones. CI passes `--all` to populate all three
+// before the per-platform `electron-builder` step.
+//
+// Idempotent: skips when the target binary + models already exist.
+// Non-fatal on failure so a flaky network does not break `npm install`.
 
-import { createWriteStream, existsSync, mkdirSync, rmSync } from "node:fs";
+import { createWriteStream, existsSync, mkdirSync, rmSync, chmodSync } from "node:fs";
 import { cp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import * as path from "node:path";
@@ -18,25 +21,59 @@ import { fileURLToPath } from "node:url";
 const require = createRequire(import.meta.url);
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+const REALESRGAN_BASE =
+  "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424";
+const REALCUGAN_BASE =
+  "https://github.com/nihui/realcugan-ncnn-vulkan/releases/download/20220728/realcugan-ncnn-vulkan-20220728";
+
+const PLATFORMS = {
+  linux: {
+    suffix: "ubuntu",
+    binExt: "",
+    libExts: [".so", ".so.1"],
+  },
+  mac: {
+    suffix: "macos",
+    binExt: "",
+    libExts: [".dylib"],
+  },
+  win: {
+    suffix: "windows",
+    binExt: ".exe",
+    libExts: [".dll"],
+  },
+};
+
 const SOURCES = {
   realesrgan: {
-    url: "https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.5.0/realesrgan-ncnn-vulkan-20220424-windows.zip",
-    binaryName: "realesrgan-ncnn-vulkan.exe",
+    urlBase: REALESRGAN_BASE,
+    binary: "realesrgan-ncnn-vulkan",
     modelSubdir: "realesrgan",
   },
   realcugan: {
-    url: "https://github.com/nihui/realcugan-ncnn-vulkan/releases/download/20220728/realcugan-ncnn-vulkan-20220728-windows.zip",
-    binaryName: "realcugan-ncnn-vulkan.exe",
+    urlBase: REALCUGAN_BASE,
+    binary: "realcugan-ncnn-vulkan",
     modelSubdir: "realcugan",
   },
 };
 
-const BIN_DIR = path.join(ROOT, "resources", "bin", "win");
-const MODELS_DIR = path.join(ROOT, "resources", "models");
+function hostPlatformKey() {
+  if (process.platform === "win32") return "win";
+  if (process.platform === "darwin") return "mac";
+  return "linux";
+}
+
+function targetsFromArgs() {
+  const argv = process.argv.slice(2);
+  if (argv.includes("--all")) return Object.keys(PLATFORMS);
+  const wanted = argv.filter((a) => Object.keys(PLATFORMS).includes(a));
+  if (wanted.length) return wanted;
+  return [hostPlatformKey()];
+}
 
 async function main() {
-  mkdirSync(BIN_DIR, { recursive: true });
-  mkdirSync(MODELS_DIR, { recursive: true });
+  const targets = targetsFromArgs();
+  console.log(`[cove] downloading binaries for: ${targets.join(", ")}`);
 
   let yauzl;
   try {
@@ -44,35 +81,40 @@ async function main() {
   } catch {
     console.warn(
       "[cove] yauzl not installed yet — skipping binary download. " +
-        "It will run on the next `npm install` or you can run it manually with `node scripts/download-binaries.mjs`.",
+        "Rerun with `node scripts/download-binaries.mjs` after `npm install`.",
     );
     return;
   }
 
-  for (const [name, spec] of Object.entries(SOURCES)) {
-    const binPath = path.join(BIN_DIR, spec.binaryName);
-    const modelDest = path.join(MODELS_DIR, spec.modelSubdir);
+  for (const platformKey of targets) {
+    const platform = PLATFORMS[platformKey];
+    const binDir = path.join(ROOT, "resources", "bin", platformKey);
+    mkdirSync(binDir, { recursive: true });
 
-    if (existsSync(binPath) && existsSync(modelDest)) {
-      console.log(`[cove] ${name}: already installed, skipping`);
-      continue;
-    }
+    for (const [name, spec] of Object.entries(SOURCES)) {
+      const binName = spec.binary + platform.binExt;
+      const binPath = path.join(binDir, binName);
+      const modelDest = path.join(ROOT, "resources", "models", spec.modelSubdir);
+      const url = `${spec.urlBase}-${platform.suffix}.zip`;
 
-    try {
-      console.log(`[cove] ${name}: downloading ${spec.url}`);
-      const zipPath = await downloadToTmp(spec.url, `${name}.zip`);
-      const extractDir = path.join(tmpdir(), `cove-${name}-${Date.now()}`);
-      mkdirSync(extractDir, { recursive: true });
-      await extractZip(yauzl, zipPath, extractDir);
-      await installExtracted(extractDir, spec, binPath, modelDest);
-      rmSync(zipPath, { force: true });
-      await rm(extractDir, { recursive: true, force: true });
-      console.log(`[cove] ${name}: installed`);
-    } catch (err) {
-      console.warn(`[cove] ${name}: download failed — ${err.message}`);
-      console.warn(
-        "[cove] Upscaling will error until binaries are present. Rerun: node scripts/download-binaries.mjs",
-      );
+      if (existsSync(binPath) && existsSync(modelDest)) {
+        console.log(`[cove] ${platformKey}/${name}: already installed, skipping`);
+        continue;
+      }
+
+      try {
+        console.log(`[cove] ${platformKey}/${name}: downloading ${url}`);
+        const zipPath = await downloadToTmp(url, `${platformKey}-${name}.zip`);
+        const extractDir = path.join(tmpdir(), `cove-${platformKey}-${name}-${Date.now()}`);
+        mkdirSync(extractDir, { recursive: true });
+        await extractZip(yauzl, zipPath, extractDir);
+        await installExtracted(extractDir, spec, platform, binPath, modelDest);
+        rmSync(zipPath, { force: true });
+        await rm(extractDir, { recursive: true, force: true });
+        console.log(`[cove] ${platformKey}/${name}: installed`);
+      } catch (err) {
+        console.warn(`[cove] ${platformKey}/${name}: download failed — ${err.message}`);
+      }
     }
   }
 }
@@ -114,25 +156,31 @@ function extractZip(yauzl, zipPath, destDir) {
   });
 }
 
-async function installExtracted(extractRoot, spec, binDest, modelDest) {
+async function installExtracted(extractRoot, spec, platform, binDest, modelDest) {
   const topLevel = await findSingleRoot(extractRoot);
   const sourceRoot = topLevel ?? extractRoot;
 
-  const sourceBin = await findFile(sourceRoot, spec.binaryName);
+  const binName = spec.binary + platform.binExt;
+  const sourceBin = await findFile(sourceRoot, binName);
   if (!sourceBin) {
-    throw new Error(`Binary ${spec.binaryName} not found in archive`);
+    throw new Error(`Binary ${binName} not found in archive`);
   }
-  mkdirSync(path.dirname(binDest), { recursive: true });
   await cp(sourceBin, binDest, { force: true });
+  if (platform !== PLATFORMS.win) {
+    chmodSync(binDest, 0o755);
+  }
 
-  // The Windows zips ship a vcomp DLL next to the .exe that the binary needs
-  // at runtime. Copy any sibling DLLs alongside the binary.
+  // Copy any sibling shared libraries the binary needs (vcomp/vulkan DLLs on
+  // Windows, libomp.dylib on macOS, occasional .so on Linux).
   const binSrcDir = path.dirname(sourceBin);
   const binSiblings = await readdir(binSrcDir, { withFileTypes: true });
   for (const e of binSiblings) {
-    if (!e.isFile() || e.name === spec.binaryName) continue;
-    if (path.extname(e.name).toLowerCase() === ".dll") {
-      await cp(path.join(binSrcDir, e.name), path.join(path.dirname(binDest), e.name), { force: true });
+    if (!e.isFile() || e.name === binName) continue;
+    const lower = e.name.toLowerCase();
+    if (platform.libExts.some((ext) => lower.endsWith(ext))) {
+      const dest = path.join(path.dirname(binDest), e.name);
+      await cp(path.join(binSrcDir, e.name), dest, { force: true });
+      if (platform !== PLATFORMS.win) chmodSync(dest, 0o755);
     }
   }
 

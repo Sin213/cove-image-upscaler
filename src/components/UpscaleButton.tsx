@@ -11,7 +11,8 @@ export function UpscaleButton() {
   const clearImages = useStore((s) => s.clearImages);
   const processing = useStore((s) => s.isProcessing());
 
-  const hasWork = queue.length > 0;
+  const queued = queue.filter((q) => q.status !== "done");
+  const hasWork = queued.length > 0;
 
   const onClick = async () => {
     if (processing) {
@@ -23,18 +24,11 @@ export function UpscaleButton() {
     resetStatuses();
     const jobs: UpscaleJob[] = queue.map((q) => {
       const jobId = `job-${q.image.id}-${Date.now()}`;
-      const { base, ext } = splitName(q.image.name);
-      const outName = `${base}_${scale}x_${mode}.png`;
-      const outPath = joinPath(
-        outputDir ?? dirname(q.image.path),
-        outName,
-      );
       startJob(q.image.id, jobId);
-      void ext;
       return {
         id: jobId,
         inputPath: q.image.path,
-        outputPath: outPath,
+        outputDir,
         mode,
         scale,
       };
@@ -43,43 +37,41 @@ export function UpscaleButton() {
   };
 
   return (
-    <div className="flex items-center gap-2">
-      {hasWork && !processing && (
-        <button
-          onClick={clearImages}
-          className="rounded-lg border border-cove-border px-3 py-2 text-sm text-cove-muted hover:border-cove-danger hover:text-cove-danger"
-        >
-          Clear
+    <div className="flex items-center gap-2.5">
+      <button
+        onClick={clearImages}
+        disabled={processing || queue.length === 0}
+        className="btn btn-ghost"
+      >
+        Clear
+      </button>
+      {processing ? (
+        <button onClick={onClick} className="btn btn-cancel">
+          <CancelIcon /> Cancel
+        </button>
+      ) : (
+        <button onClick={onClick} disabled={!hasWork} className="btn btn-primary">
+          <SparkleIcon /> Upscale {hasWork ? queued.length : ""}
         </button>
       )}
-      <button
-        onClick={onClick}
-        disabled={!hasWork}
-        className={`rounded-lg px-5 py-2 text-sm font-semibold transition-colors ${
-          processing
-            ? "bg-cove-danger text-white hover:bg-cove-danger/90"
-            : "bg-cove-accent text-cove-bg hover:bg-cove-accent/90 disabled:cursor-not-allowed disabled:opacity-40"
-        }`}
-      >
-        {processing ? "Cancel" : `Upscale ${queue.length || ""}`.trim()}
-      </button>
     </div>
   );
 }
 
-function splitName(name: string): { base: string; ext: string } {
-  const i = name.lastIndexOf(".");
-  if (i <= 0) return { base: name, ext: "" };
-  return { base: name.slice(0, i), ext: name.slice(i) };
+function SparkleIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3l1.6 4.4L18 9l-4.4 1.6L12 15l-1.6-4.4L6 9l4.4-1.6z" />
+      <path d="M19 14l.7 1.9L21.6 17l-1.9.7L19 19.6l-.7-1.9L16.4 17l1.9-.7z" />
+    </svg>
+  );
 }
 
-function dirname(p: string): string {
-  const i = Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\"));
-  return i >= 0 ? p.slice(0, i) : ".";
-}
-
-function joinPath(dir: string, name: string): string {
-  const sep = dir.includes("\\") && !dir.includes("/") ? "\\" : "/";
-  if (dir.endsWith(sep)) return `${dir}${name}`;
-  return `${dir}${sep}${name}`;
+function CancelIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12" />
+      <path d="M18 6l-12 12" />
+    </svg>
+  );
 }

@@ -13,13 +13,58 @@ const THUMB_SIZE = 128;
 let mainWindow: BrowserWindow | null = null;
 const upscaler = new Upscaler();
 
+interface WindowBounds {
+  width: number;
+  height: number;
+  x?: number;
+  y?: number;
+  maximized?: boolean;
+}
+
+function boundsFile(): string {
+  return path.join(app.getPath("userData"), "window-bounds.json");
+}
+
+function readBounds(): WindowBounds | null {
+  try {
+    const raw = fs.readFileSync(boundsFile(), "utf-8");
+    const parsed = JSON.parse(raw) as WindowBounds;
+    if (
+      typeof parsed.width === "number" &&
+      typeof parsed.height === "number" &&
+      parsed.width >= 600 &&
+      parsed.height >= 400
+    ) {
+      return parsed;
+    }
+  } catch {
+    // first run / corrupt — fall back to defaults
+  }
+  return null;
+}
+
+function writeBounds(b: WindowBounds): void {
+  try {
+    fs.mkdirSync(path.dirname(boundsFile()), { recursive: true });
+    fs.writeFileSync(boundsFile(), JSON.stringify(b));
+  } catch {
+    // best effort
+  }
+}
+
 function createWindow(): void {
+  const saved = readBounds();
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    width: saved?.width ?? 1180,
+    height: saved?.height ?? 760,
+    x: saved?.x,
+    y: saved?.y,
     minWidth: 820,
     minHeight: 560,
-    backgroundColor: "#0f1419",
+    backgroundColor: "#0b0b10",
+    show: false,
+    frame: false,
+    titleBarStyle: "hidden",
     icon: path.join(app.getAppPath(), "cove_icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -29,6 +74,14 @@ function createWindow(): void {
     },
   });
 
+  // Wait for the renderer to be ready before showing — eliminates the white
+  // flash that you'd otherwise see between window creation and first paint.
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+  });
+
+  if (saved?.maximized) mainWindow.maximize();
+
   if (DEV_URL) {
     mainWindow.loadURL(DEV_URL);
     mainWindow.webContents.openDevTools({ mode: "detach" });
@@ -36,9 +89,27 @@ function createWindow(): void {
     mainWindow.loadFile(path.join(app.getAppPath(), "dist", "index.html"));
   }
 
+  const persist = () => {
+    if (!mainWindow) return;
+    const isMax = mainWindow.isMaximized();
+    const bounds = isMax ? saved ?? mainWindow.getBounds() : mainWindow.getBounds();
+    writeBounds({ ...bounds, maximized: isMax });
+  };
+  mainWindow.on("close", persist);
+  mainWindow.on("resize", debounce(persist, 250));
+  mainWindow.on("move", debounce(persist, 250));
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+}
+
+function debounce<T extends (...args: unknown[]) => void>(fn: T, ms: number): T {
+  let t: NodeJS.Timeout | null = null;
+  return ((...args: unknown[]) => {
+    if (t) clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  }) as T;
 }
 
 upscaler.on("progress", (payload) => {
@@ -137,8 +208,29 @@ function registerIpc(): void {
     if (fs.existsSync(p)) shell.showItemInFolder(p);
   });
 
-  ipcMain.handle("cove:default-output-dir", async (_e, inputPath: string) => {
-    return path.dirname(inputPath);
+  ipcMain.handle("cove:open-folder", async (_e, dir: string) => {
+    if (fs.existsSync(dir)) await shell.openPath(dir);
+  });
+
+  ipcMain.handle("cove:read-image-data-url", async (_e, p: string, maxSize?: number) => {
+    try {
+      if (!fs.existsSync(p)) return null;
+      const img = nativeImage.createFromPath(p);
+      if (img.isEmpty()) return null;
+      const size = img.getSize();
+      const max = typeof maxSize === "number" && maxSize > 0 ? maxSize : 1920;
+      const scale = Math.min(max / size.width, max / size.height, 1);
+      const out = scale < 1
+        ? img.resize({
+            width: Math.max(1, Math.round(size.width * scale)),
+            height: Math.max(1, Math.round(size.height * scale)),
+            quality: "good",
+          })
+        : img;
+      return { url: out.toDataURL(), width: size.width, height: size.height };
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle("cove:enqueue", async (_e, jobs: UpscaleJob[]) => {
@@ -160,6 +252,24 @@ function registerIpc(): void {
   ipcMain.handle("cove:cancel-all", async () => {
     upscaler.cancelAll();
   });
+
+  ipcMain.handle("cove:cancel-one", async (_e, jobId: string) => {
+    upscaler.cancelOne(jobId);
+  });
+
+  ipcMain.on("cove:window-minimize", () => {
+    mainWindow?.minimize();
+  });
+
+  ipcMain.on("cove:window-toggle-maximize", () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMaximized()) mainWindow.unmaximize();
+    else mainWindow.maximize();
+  });
+
+  ipcMain.on("cove:window-close", () => {
+    mainWindow?.close();
+  });
 }
 
 app.whenReady().then(() => {
@@ -171,10 +281,6 @@ app.whenReady().then(() => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 
-  // Auto-updater: checks GitHub releases on startup. For NSIS (Setup.exe)
-  // and AppImage installs, electron-updater downloads the new build in
-  // the background and prompts the user to restart. Portable/.deb/source
-  // are skipped with a log message.
   if (app.isPackaged) {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
       console.warn("auto-update check failed:", err);
