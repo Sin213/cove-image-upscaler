@@ -22,6 +22,7 @@
     "dist:win": "npm run build && electron-builder --win",
     "dist:win:portable": "npm run build && electron-builder --win portable",
     "dist:mac": "npm run build && electron-builder --mac",
+    "release": "npm run build && electron-builder --linux --win --publish=always && node build/postReleaseSidecars.js",
     "postinstall": "node scripts/download-binaries.mjs || echo \"postinstall: binary download skipped\"",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit"
   },
@@ -52,6 +53,7 @@
   "build": {
     "appId": "com.cove.imageupscaler",
     "productName": "Cove Image Upscaler",
+    "afterAllArtifactBuild": "build/afterAllArtifactBuild.js",
     "directories": {
       "output": "release"
     },
