@@ -1,6 +1,6 @@
 {
   "name": "cove-image-upscaler",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Desktop image upscaler for photos and anime, powered by NCNN Vulkan. Linux + Windows builds from a single repo.",
   "homepage": "https://github.com/Sin213/cove-image-upscaler",
   "main": "dist-electron/main.js",

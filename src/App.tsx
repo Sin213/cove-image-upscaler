@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dropzone } from "./components/Dropzone";
 import { ImageQueue } from "./components/ImageQueue";
 import { LogPanel } from "./components/LogPanel";
@@ -22,8 +22,8 @@ export function App() {
     return window.cove.onProgress((p) => applyProgress(p));
   }, [applyProgress]);
 
-  const counts = countByStatus(queue);
-  const queued = queue.filter((q) => q.status === "queued" || q.status === "idle");
+  const counts = useMemo(() => countByStatus(queue), [queue]);
+  const queued = useMemo(() => queue.filter((q) => q.status === "queued" || q.status === "idle"), [queue]);
 
   let statusState: "idle" | "running" | "done" | "error" = "idle";
   let statusLabel = "ready";
