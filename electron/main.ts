@@ -5,6 +5,9 @@ import * as fs from "node:fs";
 import { Upscaler } from "./upscaler";
 import { ensureBinariesReady } from "./paths";
 import type { ImportedImage, UpscaleJob } from "./types";
+import { setupPortableMode } from "./portable";
+
+setupPortableMode();
 
 const DEV_URL = process.env.VITE_DEV_SERVER_URL;
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
