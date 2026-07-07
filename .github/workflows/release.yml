@@ -32,6 +32,21 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build && npx electron-builder --linux --publish always
 
+      # Fleet policy: every release artifact gets its own <name>.sha256
+      # sidecar (sha256sum format), including auto-update metadata.
+      - name: Generate + upload sha256 sidecars
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v$(node -p "require('./package.json').version")"
+          cd release
+          for f in *.AppImage *.deb latest*.yml; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+            gh release upload "$TAG" "$f.sha256" --clobber
+          done
+
       - name: Upload AppImage
         uses: actions/upload-artifact@v4
         with:
@@ -62,6 +77,22 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build && npx electron-builder --win --publish always
+
+      # Fleet policy: every release artifact gets its own <name>.sha256
+      # sidecar (sha256sum format), including auto-update metadata.
+      - name: Generate + upload sha256 sidecars
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="v$(node -p "require('./package.json').version")"
+          cd release
+          for f in *-Setup.exe *-Portable.exe latest*.yml; do
+            [ -f "$f" ] || continue
+            sha256sum "$f" > "$f.sha256"
+            gh release upload "$TAG" "$f.sha256" --clobber
+          done
 
       - name: Upload Setup installer
         uses: actions/upload-artifact@v4
