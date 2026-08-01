@@ -64,6 +64,14 @@ export class Upscaler extends EventEmitter {
       this.emitProgress({ id: job.id, percent: 0, status: "cancelled" });
     }
     if (this.active) this.requestActiveCancel();
+    // The latch only exists so an in-flight job can observe the cancel at its
+    // next checkpoint. Queued work is already settled above, so with nothing
+    // left to cancel the latch must not survive this call: a stale flag is read
+    // by the *next* enqueued job and cancels it. An active job keeps the latch
+    // until its own terminal path settles it in finishJob.
+    if (this.active === null && this.queue.length === 0) {
+      this.cancelAllFlag = false;
+    }
   }
 
   cancelOne(jobId: string): void {
@@ -323,6 +331,12 @@ export class Upscaler extends EventEmitter {
     error?: string,
   ): void {
     this.active = null;
+    // Every reader of cancelAllFlag belongs to the job settling here, and
+    // cancelAll() empties the queue synchronously, so anything still queued was
+    // enqueued after that call and is out of the cancel's scope. Releasing the
+    // latch with the active slot keeps it from reaching the next job through the
+    // deferred drain window. drain()'s own reset stays as-is.
+    this.cancelAllFlag = false;
     const payload: JobProgress = {
       id: job.id,
       percent: status === "done" ? 100 : 0,

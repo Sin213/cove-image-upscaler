@@ -460,3 +460,185 @@ test("22. a processing failure does not leave a partial final PNG", async () => 
     "failed job left a temp artefact",
   );
 });
+
+// 26. cancelAll() cancellation scope.
+//
+// cancelAll() must only affect work that is active or queued when it is called.
+// A cancellation latch left set while the queue is idle leaks into the next
+// enqueued job and cancels it.
+
+const TERMINAL_STATUSES = ["done", "error", "cancelled"];
+
+function pixelSource(name, w, h) {
+  const px = [];
+  for (let i = 0; i < w * h; i++) px.push([i & 0xff, 90, 7, 255]);
+  const dir = fs.mkdtempSync(path.join(tmpDir, `${name}-`));
+  const input = path.join(dir, `${name}.png`);
+  fs.writeFileSync(input, writePng(px, w, h));
+  return { dir, input };
+}
+
+// The path resolveOutputPath() picks at enqueue time.
+const resolvedOutput = (dir, name, scale) => path.join(dir, `${name}_${scale}x_pixel.png`);
+
+function queueHarness() {
+  const { Upscaler } = require("../dist-electron/upscaler.js");
+  const up = new Upscaler();
+  const events = [];
+  const terminals = new Map();
+  const waiters = new Map();
+  up.on("progress", (p) => {
+    events.push(p);
+    if (!TERMINAL_STATUSES.includes(p.status)) return;
+    if (!terminals.has(p.id)) terminals.set(p.id, p);
+    const waiter = waiters.get(p.id);
+    if (waiter) {
+      waiters.delete(p.id);
+      waiter(p);
+    }
+  });
+  const settled = (id) =>
+    terminals.has(id)
+      ? Promise.resolve(terminals.get(id))
+      : new Promise((resolve) => waiters.set(id, resolve));
+  const terminalCount = (id) =>
+    events.filter((p) => p.id === id && TERMINAL_STATUSES.includes(p.status)).length;
+  // Settle order, not "running" order: pixel jobs emit throttled running
+  // updates, so a running-status filter counts progress ticks, not starts.
+  const settleOrder = () => [...terminals.keys()];
+  return { up, events, settled, terminalCount, settleOrder };
+}
+
+test("26a. an idle cancelAll does not cancel the next enqueued pixel job", async () => {
+  const { dir, input } = pixelSource("idle-latch", 8, 8);
+  const { up, settled, events } = queueHarness();
+
+  up.cancelAll();
+  up.enqueue([{ id: "after-idle", mode: "pixel", scale: 2, inputPath: input, outputDir: dir }]);
+
+  const terminal = await settled("after-idle");
+  assert.equal(terminal.status, "done", "an idle cancelAll leaked into a later job");
+  assert.equal(fs.existsSync(resolvedOutput(dir, "idle-latch", 2)), true);
+  assert.equal(
+    events.some((p) => p.id === "after-idle" && p.status === "cancelled"),
+    false,
+    "a job enqueued after cancelAll emitted a cancellation",
+  );
+});
+
+test("26b. repeated idle cancelAll calls leave no persistent cancellation state", async () => {
+  const { dir, input } = pixelSource("idle-repeat", 8, 8);
+  const { up, settled, events } = queueHarness();
+
+  up.cancelAll();
+  up.cancelAll();
+  up.cancelAll();
+  up.enqueue([{ id: "after-repeat", mode: "pixel", scale: 2, inputPath: input, outputDir: dir }]);
+
+  const terminal = await settled("after-repeat");
+  assert.equal(terminal.status, "done");
+  assert.equal(
+    events.some((p) => p.id === "after-repeat" && p.status === "cancelled"),
+    false,
+  );
+});
+
+test("26c. cancelAll during an active pixel job still cancels it, and a later job succeeds", async () => {
+  // Large enough that the job is still expanding rows when the cancel lands.
+  const { dir, input } = pixelSource("active-cancel", 900, 900);
+  const { up, settled, terminalCount } = queueHarness();
+
+  up.enqueue([{ id: "active", mode: "pixel", scale: 8, inputPath: input, outputDir: dir }]);
+  setTimeout(() => up.cancelAll(), 40);
+
+  const cancelled = await settled("active");
+  assert.equal(cancelled.status, "cancelled", "active pixel cancellation regressed");
+  assert.equal(
+    fs.existsSync(resolvedOutput(dir, "active-cancel", 8)),
+    false,
+    "cancelled pixel job left a final output",
+  );
+  assert.equal(terminalCount("active"), 1, "cancelled job settled more than once");
+
+  const small = pixelSource("after-active", 8, 8);
+  up.enqueue([
+    { id: "after-active", mode: "pixel", scale: 2, inputPath: small.input, outputDir: small.dir },
+  ]);
+  const terminal = await settled("after-active");
+  assert.equal(terminal.status, "done", "a job enqueued after an active cancel was cancelled");
+});
+
+test("26d. queued jobs present at cancelAll are cancelled and the queue empties", async () => {
+  const big = pixelSource("batch-a", 900, 900);
+  const b = pixelSource("batch-b", 8, 8);
+  const c = pixelSource("batch-c", 8, 8);
+  const { up, settled } = queueHarness();
+
+  up.enqueue([
+    { id: "A", mode: "pixel", scale: 8, inputPath: big.input, outputDir: big.dir },
+    { id: "B", mode: "pixel", scale: 2, inputPath: b.input, outputDir: b.dir },
+    { id: "C", mode: "pixel", scale: 2, inputPath: c.input, outputDir: c.dir },
+  ]);
+  setTimeout(() => up.cancelAll(), 40);
+
+  const [ta, tb, tc] = await Promise.all([settled("A"), settled("B"), settled("C")]);
+  assert.equal(ta.status, "cancelled");
+  assert.equal(tb.status, "cancelled");
+  assert.equal(tc.status, "cancelled");
+  assert.equal(up.queue.length, 0, "queue did not drain to zero");
+  assert.equal(up.active, null, "queue left an active job after cancellation");
+
+  const d = pixelSource("batch-d", 8, 8);
+  up.enqueue([{ id: "D", mode: "pixel", scale: 2, inputPath: d.input, outputDir: d.dir }]);
+  const td = await settled("D");
+  assert.equal(td.status, "done", "a job enqueued after a batch cancel was cancelled");
+});
+
+test("26e. cancelAll in the deferred-drain window does not cancel the next job", async () => {
+  const first = pixelSource("window-first", 8, 8);
+  const second = pixelSource("window-second", 8, 8);
+  const { up, settled, terminalCount } = queueHarness();
+
+  up.enqueue([
+    { id: "first", mode: "pixel", scale: 2, inputPath: first.input, outputDir: first.dir },
+  ]);
+  const done = await settled("first");
+  assert.equal(done.status, "done");
+
+  // finishJob has cleared active and deferred drain through setImmediate; that
+  // deferred drain has not run yet on this microtask turn.
+  up.cancelAll();
+  up.enqueue([
+    { id: "second", mode: "pixel", scale: 2, inputPath: second.input, outputDir: second.dir },
+  ]);
+
+  const terminal = await settled("second");
+  assert.equal(terminal.status, "done", "cancelAll in the deferred-drain window cancelled a later job");
+  assert.equal(terminalCount("first"), 1, "duplicate terminal event for the settled job");
+  assert.equal(terminalCount("second"), 1, "duplicate terminal event for the following job");
+  assert.equal(up.active, null);
+  assert.equal(up.queue.length, 0);
+});
+
+test("26f. FIFO ordering survives an idle cancelAll", async () => {
+  const a = pixelSource("fifo-a", 8, 8);
+  const b = pixelSource("fifo-b", 8, 8);
+  const c = pixelSource("fifo-c", 8, 8);
+  const { up, settled, events, settleOrder } = queueHarness();
+
+  up.cancelAll();
+  up.enqueue([
+    { id: "f1", mode: "pixel", scale: 2, inputPath: a.input, outputDir: a.dir },
+    { id: "f2", mode: "pixel", scale: 2, inputPath: b.input, outputDir: b.dir },
+    { id: "f3", mode: "pixel", scale: 2, inputPath: c.input, outputDir: c.dir },
+  ]);
+
+  const terminals = await Promise.all([settled("f1"), settled("f2"), settled("f3")]);
+  assert.deepEqual(terminals.map((t) => t.status), ["done", "done", "done"]);
+  assert.deepEqual(settleOrder(), ["f1", "f2", "f3"], "FIFO ordering changed");
+  assert.equal(
+    events.some((p) => p.status === "cancelled"),
+    false,
+    "an idle cancelAll cancelled a later job",
+  );
+});
