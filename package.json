@@ -24,12 +24,14 @@
     "dist:mac": "npm run build && electron-builder --mac",
     "release": "npm run build && electron-builder --linux --win --publish=always && node build/postReleaseSidecars.js",
     "postinstall": "node scripts/download-binaries.mjs || echo \"postinstall: binary download skipped\"",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "test": "npm run build:electron && node --test tests/*.test.mjs"
   },
   "dependencies": {
     "electron-updater": "^6.8.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "sharp": "0.35.3",
     "yauzl": "^3.2.0",
     "zustand": "^4.5.5"
   },
@@ -57,6 +59,10 @@
     "directories": {
       "output": "release"
     },
+    "asarUnpack": [
+      "**/node_modules/sharp/**",
+      "**/node_modules/@img/**"
+    ],
     "files": [
       "dist-electron/**/*",
       "dist/**/*",

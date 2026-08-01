@@ -10,7 +10,8 @@ import {
   realesrganBinary,
   realesrganModelsDir,
 } from "./paths";
-import type { JobProgress, UpscaleJob } from "./types";
+import { PixelCancelledError, processPixelImage } from "./pixel";
+import type { JobProgress, PixelUpscaleJob, UpscaleJob } from "./types";
 
 const PROGRESS_RE = /(\d+(?:\.\d+)?)%/;
 const PROGRESS_THROTTLE_MS = 100;
@@ -20,9 +21,29 @@ interface ResolvedJob {
   outputPath: string;
 }
 
+// Photo/anime run as NCNN child processes; pixel runs locally in-process. The
+// tag keeps `child` off the local variant instead of making it optional on one
+// broad object, so cancellation can't silently no-op on a pixel job.
+type AiUpscaleJob = Exclude<UpscaleJob, PixelUpscaleJob>;
+
+type ActiveJob =
+  | {
+      kind: "process";
+      job: AiUpscaleJob;
+      outputPath: string;
+      child: ChildProcess;
+      tempPath: string | null;
+    }
+  | {
+      kind: "local";
+      job: PixelUpscaleJob;
+      outputPath: string;
+      cancelled: boolean;
+    };
+
 export class Upscaler extends EventEmitter {
   private queue: ResolvedJob[] = [];
-  private active: { job: UpscaleJob; outputPath: string; child: ChildProcess; tempPath: string | null } | null = null;
+  private active: ActiveJob | null = null;
   private cancelAllFlag = false;
   private cancelledIds = new Set<string>();
 
@@ -42,13 +63,7 @@ export class Upscaler extends EventEmitter {
     for (const { job } of pending) {
       this.emitProgress({ id: job.id, percent: 0, status: "cancelled" });
     }
-    if (this.active) {
-      try {
-        this.active.child.kill("SIGTERM");
-      } catch {
-        // process may already be dead
-      }
-    }
+    if (this.active) this.requestActiveCancel();
   }
 
   cancelOne(jobId: string): void {
@@ -60,11 +75,23 @@ export class Upscaler extends EventEmitter {
     }
     if (this.active && this.active.job.id === jobId) {
       this.cancelledIds.add(jobId);
-      try {
-        this.active.child.kill("SIGTERM");
-      } catch {
-        // already dead
-      }
+      this.requestActiveCancel();
+    }
+  }
+
+  // Cancellation is a request, not a completion: the active job's own terminal
+  // path still settles it exactly once.
+  private requestActiveCancel(): void {
+    const active = this.active;
+    if (!active) return;
+    if (active.kind === "local") {
+      active.cancelled = true;
+      return;
+    }
+    try {
+      active.child.kill("SIGTERM");
+    } catch {
+      // process may already be dead
     }
   }
 
@@ -84,12 +111,73 @@ export class Upscaler extends EventEmitter {
 
   private runJob(resolved: ResolvedJob): void {
     const { job, outputPath } = resolved;
+    // Dispatch before any binary resolution or command construction: pixel jobs
+    // must never spawn Real-ESRGAN or Real-CUGAN.
     if (job.mode === "pixel") {
-      // Guard before any binary resolution or command construction: pixel jobs
-      // must never spawn Real-ESRGAN or Real-CUGAN.
-      this.finishJob(job, outputPath, "error", "Pixel upscaling is not implemented yet.");
+      this.runPixelJob(job, outputPath);
       return;
     }
+    this.runAiJob(job, outputPath);
+  }
+
+  // Local, in-process pixel job. Reserves the active slot before any async work
+  // so queue concurrency stays at one, and settles through finishJob exactly
+  // once on success, failure or cancellation.
+  private runPixelJob(job: PixelUpscaleJob, outputPath: string): void {
+    const active: ActiveJob = { kind: "local", job, outputPath, cancelled: false };
+    this.active = active;
+    this.emitProgress({ id: job.id, percent: 0, status: "running" });
+
+    let lastEmit = 0;
+    // Only this job's own output may be removed. processPixelImage publishes by
+    // renaming a temp file into place, so it publishes on the resolve path and
+    // never on the reject path: cleaning up unconditionally would delete a file
+    // another writer put at outputPath after resolveOutputPath ran.
+    const settleCancelled = (published: boolean) => {
+      this.cancelledIds.delete(job.id);
+      if (published) this.removeFile(outputPath);
+      this.finishJob(job, outputPath, "cancelled");
+    };
+
+    void processPixelImage(job.inputPath, outputPath, job.scale, {
+      cancellation: {
+        isCancelled: () =>
+          active.cancelled || this.cancelAllFlag || this.cancelledIds.has(job.id),
+      },
+      onProgress: (percent) => {
+        const now = Date.now();
+        if (now - lastEmit < PROGRESS_THROTTLE_MS) return;
+        lastEmit = now;
+        this.emitProgress({
+          id: job.id,
+          percent: Math.min(99, Math.max(0, percent)),
+          status: "running",
+        });
+      },
+    }).then(
+      () => {
+        // A cancel that lands after the rename still must not publish output.
+        if (active.cancelled || this.cancelAllFlag || this.cancelledIds.has(job.id)) {
+          settleCancelled(true);
+          return;
+        }
+        this.finishJob(job, outputPath, "done");
+      },
+      (err: unknown) => {
+        if (err instanceof PixelCancelledError || active.cancelled || this.cancelAllFlag) {
+          settleCancelled(false);
+          return;
+        }
+        this.cancelledIds.delete(job.id);
+        // Pixel failures are local: they never go through NCNN/Vulkan
+        // error humanization.
+        const message = err instanceof Error ? err.message : String(err);
+        this.finishJob(job, outputPath, "error", `Pixel upscaling failed — ${message}`);
+      },
+    );
+  }
+
+  private runAiJob(job: AiUpscaleJob, outputPath: string): void {
     // realesrgan-x4plus is x4-only; passing -s 2 / -s 3 produces tile-stitch
     // artifacts. For photo mode at non-4x, run the model at native 4x to a
     // temp file, then resize down to the requested scale ourselves.
@@ -118,7 +206,7 @@ export class Upscaler extends EventEmitter {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
-    this.active = { job, outputPath, child, tempPath };
+    this.active = { kind: "process", job, outputPath, child, tempPath };
 
     let lastEmit = 0;
     let stderrPartial = "";
@@ -217,8 +305,12 @@ export class Upscaler extends EventEmitter {
 
   private cleanupTemp(tempPath: string | null): void {
     if (!tempPath) return;
+    this.removeFile(tempPath);
+  }
+
+  private removeFile(target: string): void {
     try {
-      if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      if (fs.existsSync(target)) fs.unlinkSync(target);
     } catch {
       // best effort
     }
