@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useStore } from "../store";
+import { selectJobSettings, useStore } from "../store";
 import type { QueueEntry } from "../store";
 import type { UpscaleJob } from "../types";
 import { CompareModal } from "./CompareModal";
@@ -52,14 +52,15 @@ export function ImageQueue() {
   if (queue.length === 0) return null;
 
   const onRefresh = (entry: QueueEntry) => {
+    // Validate the current mode/scale pair before touching queue state.
+    const selection = selectJobSettings(mode, scale);
     const jobId = `job-${entry.image.id}-${Date.now()}`;
     startJob(entry.image.id, jobId);
     const job: UpscaleJob = {
       id: jobId,
       inputPath: entry.image.path,
       outputDir,
-      mode,
-      scale,
+      ...selection,
     };
     void window.cove.enqueue([job]);
   };

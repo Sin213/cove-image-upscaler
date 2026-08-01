@@ -4,6 +4,7 @@ import type { Mode } from "../types";
 const MODES: { value: Mode; label: string; hint: string }[] = [
   { value: "photo", label: "Photo", hint: "Real-world images (Real-ESRGAN)" },
   { value: "anime", label: "Anime", hint: "Illustrations & anime (Real-CUGAN)" },
+  { value: "pixel", label: "Pixel", hint: "Pixel art — exact nearest-neighbor enlargement" },
 ];
 
 export function ModeToggle() {

@@ -1,5 +1,16 @@
 import { create } from "zustand";
-import type { ImportedImage, JobProgress, JobStatus, LogEntry, LogLevel, Mode, Scale } from "./types";
+import { AI_SCALES, PIXEL_SCALES } from "../electron/types";
+import type {
+  AiScale,
+  AnyScale,
+  ImportedImage,
+  JobProgress,
+  JobStatus,
+  LogEntry,
+  LogLevel,
+  Mode,
+  PixelScale,
+} from "./types";
 
 export interface QueueEntry {
   image: ImportedImage;
@@ -13,11 +24,26 @@ export interface QueueEntry {
 
 export type Theme = "light" | "dark";
 
+// Each mode remembers its own last-used scale; Pixel supports scales the AI
+// modes do not, so a single global scale can't represent the selection.
+export interface ScaleByMode {
+  photo: AiScale;
+  anime: AiScale;
+  pixel: PixelScale;
+}
+
+// A validated mode/scale pair, ready to be spread into an `UpscaleJob`.
+export type JobSelection =
+  | { mode: "photo"; scale: AiScale }
+  | { mode: "anime"; scale: AiScale }
+  | { mode: "pixel"; scale: PixelScale };
+
 const MAX_LOGS = 200;
 
 interface State {
   mode: Mode;
-  scale: Scale;
+  scale: AnyScale;
+  scaleByMode: ScaleByMode;
   outputDir: string | null;
   queue: QueueEntry[];
   theme: Theme;
@@ -25,7 +51,7 @@ interface State {
   logCollapsed: boolean;
 
   setMode: (m: Mode) => void;
-  setScale: (s: Scale) => void;
+  setScale: (s: AnyScale) => void;
   setOutputDir: (dir: string | null) => void;
   setTheme: (t: Theme) => void;
   toggleTheme: () => void;
@@ -46,7 +72,9 @@ interface State {
 }
 
 const KEY_MODE = "cove:mode";
-const KEY_SCALE = "cove:scale";
+// Legacy single global AI scale. Read once for migration, never written again.
+const KEY_LEGACY_SCALE = "cove:scale";
+const KEY_SCALE_BY_MODE = "cove:scale-by-mode";
 const KEY_OUTPUT_DIR = "cove:output-dir";
 const KEY_THEME = "cove:theme";
 const KEY_LOG_COLLAPSED = "cove:log-collapsed";
@@ -68,15 +96,81 @@ function writeString(key: string, value: string | null): void {
   }
 }
 
-function readInitialMode(): Mode {
-  const v = readString(KEY_MODE);
-  return v === "anime" ? "anime" : "photo";
+export function isAiScale(value: unknown): value is AiScale {
+  return typeof value === "number" && AI_SCALES.some((candidate) => candidate === value);
 }
 
-function readInitialScale(): Scale {
-  const v = readString(KEY_SCALE);
-  if (v === "2" || v === "3" || v === "4") return Number(v) as Scale;
-  return 2;
+export function isPixelScale(value: unknown): value is PixelScale {
+  return typeof value === "number" && PIXEL_SCALES.some((candidate) => candidate === value);
+}
+
+export const DEFAULT_SCALE_BY_MODE: ScaleByMode = { photo: 2, anime: 2, pixel: 2 };
+
+function readInitialMode(): Mode {
+  const v = readString(KEY_MODE);
+  if (v === "anime") return "anime";
+  if (v === "pixel") return "pixel";
+  return "photo";
+}
+
+// Own-property read that never inherits from the prototype chain and never
+// widens the result away from `unknown`.
+function ownValue(source: object, key: string): unknown {
+  if (!Object.prototype.hasOwnProperty.call(source, key)) return undefined;
+  return Reflect.get(source, key);
+}
+
+// Each property is validated independently: a valid field survives even when a
+// sibling is corrupt, and an invalid field falls back to its default.
+export function parseScaleByMode(raw: string | null): ScaleByMode | null {
+  if (raw === null) return null;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return null;
+  const photo = ownValue(value, "photo");
+  const anime = ownValue(value, "anime");
+  const pixel = ownValue(value, "pixel");
+  return {
+    photo: isAiScale(photo) ? photo : DEFAULT_SCALE_BY_MODE.photo,
+    anime: isAiScale(anime) ? anime : DEFAULT_SCALE_BY_MODE.anime,
+    pixel: isPixelScale(pixel) ? pixel : DEFAULT_SCALE_BY_MODE.pixel,
+  };
+}
+
+// Only reached when the per-mode key is absent or structurally unusable. A
+// legacy value is an AI scale, so it can never seed Pixel-only scales.
+export function migrateLegacyScale(legacy: string | null): ScaleByMode {
+  const parsed = legacy === null ? Number.NaN : Number(legacy);
+  if (isAiScale(parsed)) return { photo: parsed, anime: parsed, pixel: DEFAULT_SCALE_BY_MODE.pixel };
+  return { ...DEFAULT_SCALE_BY_MODE };
+}
+
+export function scaleForMode(mode: Mode, byMode: ScaleByMode): AnyScale {
+  return mode === "pixel" ? byMode.pixel : byMode[mode];
+}
+
+function readInitialScaleByMode(): ScaleByMode {
+  return parseScaleByMode(readString(KEY_SCALE_BY_MODE)) ?? migrateLegacyScale(readString(KEY_LEGACY_SCALE));
+}
+
+// Narrows the current selection to a discriminated mode/scale pair. Throws
+// rather than letting an impossible pair reach the queue.
+export function selectJobSettings(mode: Mode, scale: AnyScale): JobSelection {
+  switch (mode) {
+    case "photo":
+      if (!isAiScale(scale)) throw new Error(`Invalid photo scale: ${String(scale)}`);
+      return { mode: "photo", scale };
+    case "anime":
+      if (!isAiScale(scale)) throw new Error(`Invalid anime scale: ${String(scale)}`);
+      return { mode: "anime", scale };
+    case "pixel":
+      if (!isPixelScale(scale)) throw new Error(`Invalid pixel scale: ${String(scale)}`);
+      return { mode: "pixel", scale };
+  }
 }
 
 function readInitialOutputDir(): string | null {
@@ -109,9 +203,14 @@ function pushLog(prev: LogEntry[], entry: LogEntry): LogEntry[] {
   return next;
 }
 
+// Computed before the store object so `mode` and `scale` start consistent.
+const initialMode = readInitialMode();
+const initialScaleByMode = readInitialScaleByMode();
+
 export const useStore = create<State>((set, get) => ({
-  mode: readInitialMode(),
-  scale: readInitialScale(),
+  mode: initialMode,
+  scale: scaleForMode(initialMode, initialScaleByMode),
+  scaleByMode: initialScaleByMode,
   outputDir: readInitialOutputDir(),
   queue: [],
   theme: readInitialTheme(),
@@ -120,12 +219,24 @@ export const useStore = create<State>((set, get) => ({
 
   setMode: (mode) => {
     writeString(KEY_MODE, mode);
-    set({ mode });
+    set((state) => ({ mode, scale: scaleForMode(mode, state.scaleByMode) }));
   },
-  setScale: (scale) => {
-    writeString(KEY_SCALE, String(scale));
-    set({ scale });
-  },
+  setScale: (scale) =>
+    set((state) => {
+      let scaleByMode: ScaleByMode;
+      if (state.mode === "pixel") {
+        if (!isPixelScale(scale)) return state;
+        scaleByMode = { ...state.scaleByMode, pixel: scale };
+      } else if (state.mode === "photo") {
+        if (!isAiScale(scale)) return state;
+        scaleByMode = { ...state.scaleByMode, photo: scale };
+      } else {
+        if (!isAiScale(scale)) return state;
+        scaleByMode = { ...state.scaleByMode, anime: scale };
+      }
+      writeString(KEY_SCALE_BY_MODE, JSON.stringify(scaleByMode));
+      return { scale, scaleByMode };
+    }),
   setOutputDir: (outputDir) => {
     writeString(KEY_OUTPUT_DIR, outputDir);
     set({ outputDir });

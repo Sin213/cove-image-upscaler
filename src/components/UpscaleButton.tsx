@@ -1,4 +1,4 @@
-import { useStore } from "../store";
+import { selectJobSettings, useStore } from "../store";
 import type { UpscaleJob } from "../types";
 
 export function UpscaleButton() {
@@ -21,6 +21,9 @@ export function UpscaleButton() {
     }
     if (!hasWork) return;
 
+    // Validate the mode/scale pair before any queue state is mutated.
+    const selection = selectJobSettings(mode, scale);
+
     resetStatuses();
     const jobs: UpscaleJob[] = queue.map((q) => {
       const jobId = `job-${q.image.id}-${Date.now()}`;
@@ -29,8 +32,7 @@ export function UpscaleButton() {
         id: jobId,
         inputPath: q.image.path,
         outputDir,
-        mode,
-        scale,
+        ...selection,
       };
     });
     await window.cove.enqueue(jobs);

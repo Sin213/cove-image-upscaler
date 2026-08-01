@@ -1,10 +1,26 @@
+import { AI_SCALES, PIXEL_SCALES } from "../../electron/types";
 import { useStore } from "../store";
-import type { AiMode, Scale } from "../types";
+import type { AnyScale, Mode } from "../types";
 
-const SCALES: Scale[] = [2, 3, 4];
+// One mode-aware source of truth; the tuples keep their literal scale types.
+const SCALES_BY_MODE = {
+  photo: AI_SCALES,
+  anime: AI_SCALES,
+  pixel: PIXEL_SCALES,
+} as const;
 
-// AI modes only — pixel mode has no scale UI.
-const HINTS: Record<AiMode, Record<Scale, { headline: string; detail: string }>> = {
+interface Hint {
+  headline: string;
+  detail: string;
+}
+
+// Keyed per mode by that mode's actual scales, so each map stays exhaustive
+// without inventing Pixel-only entries for the AI modes.
+type HintsByMode = {
+  [M in Mode]: { [S in (typeof SCALES_BY_MODE)[M][number]]: Hint };
+};
+
+const HINTS: HintsByMode = {
   photo: {
     2: { headline: "Recommended", detail: "Fastest. Balanced detail — works on any photo." },
     3: { headline: "Stronger detail", detail: "Slower than 2×. Good middle ground." },
@@ -15,6 +31,14 @@ const HINTS: Record<AiMode, Record<Scale, { headline: string; detail: string }>>
     3: { headline: "Real-CUGAN ×3", detail: "Stronger detail than 2×. Native model — no fallback." },
     4: { headline: "Maximum detail", detail: "Slowest. May tile-artifact on certain sources — drop to 2× if so." },
   },
+  pixel: {
+    2: { headline: "2× blocks", detail: "Every source pixel becomes a 2 × 2 block. No smoothing or blending." },
+    3: { headline: "3× blocks", detail: "Every source pixel becomes a 3 × 3 block. No smoothing or blending." },
+    4: { headline: "4× blocks", detail: "Every source pixel becomes a 4 × 4 block. No smoothing or blending." },
+    5: { headline: "5× blocks", detail: "Every source pixel becomes a 5 × 5 block. Existing artifacts are preserved, not repaired." },
+    6: { headline: "6× blocks", detail: "Every source pixel becomes a 6 × 6 block. Existing artifacts are preserved, not repaired." },
+    8: { headline: "8× blocks", detail: "Every source pixel becomes an 8 × 8 block. Existing artifacts are preserved, not repaired." },
+  },
 };
 
 export function ScalePicker() {
@@ -23,16 +47,15 @@ export function ScalePicker() {
   const setScale = useStore((s) => s.setScale);
   const disabled = useStore((s) => s.isProcessing());
 
-  // Pixel mode has no scale UI and is not selectable today; this narrows `mode`
-  // to the AI modes that HINTS covers.
-  if (mode === "pixel") return null;
+  const scales: readonly AnyScale[] = SCALES_BY_MODE[mode];
+  const hints: Partial<Record<AnyScale, Hint>> = HINTS[mode];
 
   return (
     <div className="flex flex-col gap-1.5">
       <span className="field-label">Scale</span>
       <div className="segmented">
-        {SCALES.map((s) => {
-          const hint = HINTS[mode][s];
+        {scales.map((s) => {
+          const hint = hints[s];
           return (
             <div key={s} className="tooltip-host">
               <button
@@ -42,10 +65,12 @@ export function ScalePicker() {
               >
                 {s}×
               </button>
-              <div className="tooltip-bubble">
-                <b>{hint.headline}</b>
-                <div className="mt-0.5 text-text-2">{hint.detail}</div>
-              </div>
+              {hint && (
+                <div className="tooltip-bubble">
+                  <b>{hint.headline}</b>
+                  <div className="mt-0.5 text-text-2">{hint.detail}</div>
+                </div>
+              )}
             </div>
           );
         })}
