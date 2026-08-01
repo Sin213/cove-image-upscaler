@@ -55,7 +55,7 @@ export function ImageQueue() {
     // Validate the current mode/scale pair before touching queue state.
     const selection = selectJobSettings(mode, scale);
     const jobId = `job-${entry.image.id}-${Date.now()}`;
-    startJob(entry.image.id, jobId);
+    startJob(entry.image.id, jobId, selection);
     const job: UpscaleJob = {
       id: jobId,
       inputPath: entry.image.path,
@@ -130,15 +130,14 @@ export function ImageQueue() {
         })}
       </div>
 
-      {compareEntry && compareEntry.outputPath && (
+      {compareEntry && compareEntry.outputPath && compareEntry.runSettings && (
         <CompareModal
           inputPath={compareEntry.image.path}
           inputName={compareEntry.image.name}
           outputPath={compareEntry.outputPath}
           inputWidth={compareEntry.image.width}
           inputHeight={compareEntry.image.height}
-          scale={scale}
-          mode={mode}
+          runSettings={compareEntry.runSettings}
           onClose={() => setCompareEntry(null)}
         />
       )}
@@ -163,8 +162,10 @@ function Row({
   onCompare: () => void;
   onRefresh: () => void;
 }) {
-  const { image, status, percent, error, outputPath, jobId } = entry;
-  const canCompare = status === "done" && !!outputPath;
+  const { image, status, percent, error, outputPath, jobId, runSettings } = entry;
+  // Compare reports the settings the output was produced with, so it stays
+  // unavailable rather than guessing when an entry has no recorded run.
+  const canCompare = status === "done" && !!outputPath && !!runSettings;
   const canCancel = (status === "running" || status === "queued") && !!jobId;
   const isRunning = status === "running";
 

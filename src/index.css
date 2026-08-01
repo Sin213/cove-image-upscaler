@@ -480,6 +480,12 @@ body {
 @keyframes cove-spin { to { transform: rotate(360deg); } }
 .animate-spin { animation: cove-spin 900ms linear infinite; transform-origin: center; }
 
+/* Compare modal Pixel rendering. Applied only to the two Compare stage images
+   for Pixel runs; thumbnails are minified and must keep default smoothing. */
+.compare-image-pixelated {
+  image-rendering: pixelated;
+}
+
 /* Compare modal fade */
 @keyframes cove-fade { from { opacity: 0; } to { opacity: 1; } }
 .animate-fade { animation: cove-fade 160ms ease; }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { JobSelection } from "../store";
 import type { LoadedImage } from "../types";
 
 interface Props {
@@ -7,8 +8,9 @@ interface Props {
   outputPath: string;
   inputWidth: number;
   inputHeight: number;
-  scale: number;
-  mode: string;
+  // The recorded mode/scale of the run that produced `outputPath`, not the
+  // current global controls.
+  runSettings: JobSelection;
   onClose: () => void;
 }
 
@@ -18,10 +20,10 @@ export function CompareModal({
   outputPath,
   inputWidth,
   inputHeight,
-  scale,
-  mode,
+  runSettings,
   onClose,
 }: Props) {
+  const { mode, scale } = runSettings;
   const [before, setBefore] = useState<LoadedImage | null>(null);
   const [after, setAfter] = useState<LoadedImage | null>(null);
   const [pos, setPos] = useState(50);
@@ -85,6 +87,11 @@ export function CompareModal({
   const outH = (after?.height ?? inputHeight * scale);
   const inW = before?.width ?? inputWidth;
   const inH = before?.height ?? inputHeight;
+  // Pixel output is exact nearest-neighbour, so the modal must not undo it with
+  // the browser's default smoothing when it enlarges either image to the stage.
+  const imgClass = `absolute inset-0 h-full w-full object-contain${
+    mode === "pixel" ? " compare-image-pixelated" : ""
+  }`;
 
   return (
     <div
@@ -152,7 +159,7 @@ export function CompareModal({
             src={after.url}
             alt="After"
             draggable={false}
-            className="absolute inset-0 h-full w-full object-contain"
+            className={imgClass}
           />
         )}
         {before && (
@@ -160,7 +167,7 @@ export function CompareModal({
             src={before.url}
             alt="Before"
             draggable={false}
-            className="absolute inset-0 h-full w-full object-contain"
+            className={imgClass}
             style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}
           />
         )}

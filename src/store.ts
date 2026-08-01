@@ -20,6 +20,10 @@ export interface QueueEntry {
   error?: string;
   outputPath?: string;
   startedAt?: number;
+  // The mode/scale actually used to build this entry's job. Absent until the
+  // entry has been run at least once. Never re-derived from global controls,
+  // so a completed entry keeps reporting the settings it was produced with.
+  runSettings?: JobSelection;
 }
 
 export type Theme = "light" | "dark";
@@ -64,7 +68,7 @@ interface State {
   reorder: (fromId: string, toId: string) => void;
   clearImages: () => void;
 
-  startJob: (imageId: string, jobId: string) => void;
+  startJob: (imageId: string, jobId: string, runSettings: JobSelection) => void;
   applyProgress: (p: JobProgress) => void;
   resetStatuses: () => void;
 
@@ -308,7 +312,7 @@ export const useStore = create<State>((set, get) => ({
 
   clearImages: () => set({ queue: [] }),
 
-  startJob: (imageId, jobId) =>
+  startJob: (imageId, jobId, runSettings) =>
     set((state) => ({
       queue: state.queue.map((q) =>
         q.image.id === imageId
@@ -320,6 +324,7 @@ export const useStore = create<State>((set, get) => ({
               error: undefined,
               outputPath: undefined,
               startedAt: undefined,
+              runSettings,
             }
           : q,
       ),

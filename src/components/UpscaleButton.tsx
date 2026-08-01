@@ -27,7 +27,7 @@ export function UpscaleButton() {
     resetStatuses();
     const jobs: UpscaleJob[] = queue.map((q) => {
       const jobId = `job-${q.image.id}-${Date.now()}`;
-      startJob(q.image.id, jobId);
+      startJob(q.image.id, jobId, selection);
       return {
         id: jobId,
         inputPath: q.image.path,
