@@ -78,6 +78,10 @@
       {
         "from": "resources/models",
         "to": "models"
+      },
+      {
+        "from": "resources/licenses",
+        "to": "licenses"
       }
     ],
     "linux": {

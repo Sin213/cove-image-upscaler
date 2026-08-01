@@ -150,3 +150,8 @@ cove-image-upscaler/
 - Bundled [Real-ESRGAN](https://github.com/xinntao/Real-ESRGAN) and
   [realcugan-ncnn-vulkan](https://github.com/nihui/realcugan-ncnn-vulkan)
   binaries are BSD-3-Clause / MIT. Models carry their upstream licenses.
+- Third-party notices for **sharp**, the prebuilt **libvips** binaries and the
+  libraries bundled inside them live in `resources/licenses/`, starting with
+  `resources/licenses/THIRD_PARTY_NOTICES.txt`. Installed builds ship the same
+  tree, at `<install dir>/resources/licenses/` on Linux and Windows and at
+  `<app bundle>/Contents/Resources/licenses/` on macOS.

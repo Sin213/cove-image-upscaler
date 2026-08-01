@@ -1,0 +1,402 @@
+Cove Image Upscaler - Third-Party Notices
+========================================
+
+Inventory verified: 2026-08-01
+
+Cove Image Upscaler itself is distributed under the MIT License; see the LICENSE
+file in the application source repository. The components listed below are
+third-party software that is redistributed with this application and remains
+governed by its own license terms, reproduced in full in this directory.
+
+This file covers the sharp image-processing library and the prebuilt libvips
+binaries it uses. Other third-party components that this application downloads
+or ships separately (for example the Real-ESRGAN and Real-CUGAN executables and
+their model files) are not covered by this file.
+
+
+1. sharp and platform packages
+------------------------------
+
+  Package                          Version  License
+  -------------------------------  -------  --------------------------------
+  sharp                            0.35.3   Apache-2.0
+  @img/colour                      1.1.0    MIT
+
+  Linux x64 builds
+  @img/sharp-linux-x64             0.35.3   Apache-2.0
+  @img/sharp-libvips-linux-x64     1.3.2    LGPL-3.0-or-later
+
+  Windows x64 builds
+  @img/sharp-win32-x64             0.35.3   Apache-2.0 AND LGPL-3.0-or-later
+
+  macOS x64 builds
+  @img/sharp-darwin-x64            0.35.3   Apache-2.0
+  @img/sharp-libvips-darwin-x64    1.3.2    LGPL-3.0-or-later
+
+  macOS arm64 builds
+  @img/sharp-darwin-arm64          0.35.3   Apache-2.0
+  @img/sharp-libvips-darwin-arm64  1.3.2    LGPL-3.0-or-later
+
+  Copyright 2013 Lovell Fuller and others.
+
+  Upstream:      https://github.com/lovell/sharp
+  License text:  sharp/LICENSE          (Apache License, Version 2.0)
+  License text:  sharp/img-colour-LICENSE.md
+
+  The Apache-2.0 text in sharp/LICENSE is the LICENSE file published in the
+  sharp 0.35.3 npm package. The same text is published in
+  @img/sharp-linux-x64, @img/sharp-darwin-x64 and @img/sharp-darwin-arm64
+  0.35.3, and in @img/sharp-win32-x64 0.35.3 differing only in line endings.
+  None of these packages contains a NOTICE file.
+
+  On Linux x64 and on macOS the prebuilt libvips shared library is supplied by
+  a separate @img/sharp-libvips-* package at version 1.3.2. On Windows x64 the
+  prebuilt libvips DLLs are supplied inside @img/sharp-win32-x64 0.35.3 itself;
+  there is no separate @img/sharp-libvips-win32-x64 package in this
+  application's dependency tree.
+
+
+2. libvips
+----------
+
+  libvips version 8.18.3 on Linux x64, Windows x64 and macOS (x64 and arm64).
+
+  Upstream:      https://github.com/libvips/libvips  (tag v8.18.3)
+  License text:  bundled/libvips/LICENSE  (GNU LGPL, Version 2.1)
+
+  libvips is published by its authors under the GNU Lesser General Public
+  License version 2.1 or, at your option, any later version. The prebuilt
+  packages listed in section 1 declare their distribution terms as
+  LGPL-3.0-or-later, exercising that "any later version" option. The verbatim
+  GNU LGPL version 3 and GNU GPL version 3 texts are reproduced in
+  bundled/libheif/COPYING.
+
+
+3. Libraries bundled inside the prebuilt libvips distribution
+-------------------------------------------------------------
+
+  The list of libraries and the terms under which they are used are reproduced
+  verbatim from the upstream project in sharp-libvips/THIRD-PARTY-NOTICES.md
+  (lovell/sharp-libvips, tag v1.3.2). The versions below are read from the
+  versions.json files shipped inside the exact binary packages this application
+  redistributes. The versions.json files in @img/sharp-libvips-darwin-x64 and
+  @img/sharp-libvips-darwin-arm64 1.3.2 are byte-identical to the Linux x64
+  one, and their licensing tables are identical too, so the "Linux / macOS"
+  column covers all three.
+
+  Library        Linux / macOS  Windows x64    Used under the terms of
+  -------------  -------------  -------------  -----------------------
+  aom            3.14.1         3.14.1         BSD-2-Clause + Alliance for Open Media Patent License 1.0
+  cairo          1.18.4         1.18.4         LGPL-2.1-or-later OR MPL-1.1 (see note 3)
+  cgif           0.5.3          0.5.3          MIT
+  expat          2.8.2          2.8.1          MIT
+  fontconfig     2.18.1         2.18.1         fontconfig License (BSD-like)
+  freetype       2.14.3         2.14.3         FreeType License (BSD-like)
+  fribidi        1.0.16         1.0.16         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  glib           2.89.1         2.89.0         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  harfbuzz       14.2.1         14.2.1         MIT ("Old MIT")
+  highway        1.4.0          1.4.0          Apache-2.0 OR BSD-3-Clause
+  lcms           2.19.1         2.19.1         MIT
+  libarchive     3.8.8          3.8.7          BSD-2-Clause
+  libexif        0.6.26         0.6.26         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  libffi         3.6.0          3.5.2          MIT
+  libheif        1.23.1         1.23.0         LGPL-3.0-or-later
+  libimagequant  2.4.1          2.4.1          BSD-2-Clause
+  libnsgif       vendored       vendored       MIT
+  libpng         1.6.58         1.6.58         libpng License (PNG Reference Library License v2)
+  librsvg        2.62.90        2.62.3         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  libtiff        d01a94b        732665c        libtiff License (BSD-like)
+  libultrahdr    1acdbed        13a058f        MIT AND Apache-2.0
+  libvips        8.18.3         8.18.3         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  libwebp        1.6.0          1.6.0          BSD-3-Clause + Additional IP Rights Grant
+  libxml2        2.15.3         2.15.3         MIT
+  mozjpeg        0826579        0826579        Zlib AND IJG AND BSD-3-Clause
+  pango          1.58.0         1.57.1         LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
+  pixman         0.46.4         0.46.4         MIT
+  proxy-libintl  0.5            0.5            LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
+  zlib-ng        2.3.3          2.3.3          Zlib
+
+  Full license texts, upstream project URLs and per-platform versions:
+
+aom
+  Upstream:      https://aomedia.googlesource.com/aom
+  Version:       Linux x64 and macOS 3.14.1 / Windows x64 3.14.1
+  Terms:         BSD-2-Clause + Alliance for Open Media Patent License 1.0
+  License text:  bundled/aom/LICENSE
+  License text:  bundled/aom/PATENTS
+
+cairo
+  Upstream:      https://gitlab.freedesktop.org/cairo/cairo
+  Version:       Linux x64 and macOS 1.18.4 / Windows x64 1.18.4
+  Terms:         LGPL-2.1-or-later OR MPL-1.1 (see note 3)
+  License text:  bundled/cairo/COPYING
+  License text:  bundled/cairo/COPYING-LGPL-2.1
+  License text:  bundled/cairo/COPYING-MPL-1.1
+
+cgif
+  Upstream:      https://github.com/dloebl/cgif
+  Version:       Linux x64 and macOS 0.5.3 / Windows x64 0.5.3
+  Terms:         MIT
+  License text:  bundled/cgif/LICENSE
+
+expat
+  Upstream:      https://github.com/libexpat/libexpat
+  Version:       Linux x64 and macOS 2.8.2 / Windows x64 2.8.1
+  Terms:         MIT
+  License text:  bundled/expat/COPYING
+
+fontconfig
+  Upstream:      https://gitlab.freedesktop.org/fontconfig/fontconfig
+  Version:       Linux x64 and macOS 2.18.1 / Windows x64 2.18.1
+  Terms:         fontconfig License (BSD-like)
+  License text:  bundled/fontconfig/COPYING
+
+freetype
+  Upstream:      https://gitlab.freedesktop.org/freetype/freetype
+  Version:       Linux x64 and macOS 2.14.3 / Windows x64 2.14.3
+  Terms:         FreeType License (BSD-like)
+  License text:  bundled/freetype/FTL.TXT
+
+fribidi
+  Upstream:      https://github.com/fribidi/fribidi
+  Version:       Linux x64 and macOS 1.0.16 / Windows x64 1.0.16
+  Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/fribidi/COPYING
+
+glib
+  Upstream:      https://gitlab.gnome.org/GNOME/glib
+  Version:       Linux x64 and macOS 2.89.1 / Windows x64 2.89.0
+  Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/glib/LGPL-2.1-or-later.txt
+
+harfbuzz
+  Upstream:      https://github.com/harfbuzz/harfbuzz
+  Version:       Linux x64 and macOS 14.2.1 / Windows x64 14.2.1
+  Terms:         MIT ("Old MIT")
+  License text:  bundled/harfbuzz/COPYING
+
+highway
+  Upstream:      https://github.com/google/highway
+  Version:       Linux x64 and macOS 1.4.0 / Windows x64 1.4.0
+  Terms:         Apache-2.0 OR BSD-3-Clause
+  License text:  bundled/highway/LICENSE
+
+lcms
+  Upstream:      https://github.com/mm2/Little-CMS
+  Version:       Linux x64 and macOS 2.19.1 / Windows x64 2.19.1
+  Terms:         MIT
+  License text:  bundled/lcms/LICENSE
+
+libarchive
+  Upstream:      https://github.com/libarchive/libarchive
+  Version:       Linux x64 and macOS 3.8.8 / Windows x64 3.8.7
+  Terms:         BSD-2-Clause
+  License text:  bundled/libarchive/COPYING
+
+libexif
+  Upstream:      https://github.com/libexif/libexif
+  Version:       Linux x64 and macOS 0.6.26 / Windows x64 0.6.26
+  Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/libexif/COPYING
+
+libffi
+  Upstream:      https://github.com/libffi/libffi
+  Version:       Linux x64 and macOS 3.6.0 / Windows x64 3.5.2
+  Terms:         MIT
+  License text:  bundled/libffi/LICENSE
+
+libheif
+  Upstream:      https://github.com/strukturag/libheif
+  Version:       Linux x64 and macOS 1.23.1 / Windows x64 1.23.0
+  Terms:         LGPL-3.0-or-later
+  License text:  bundled/libheif/COPYING
+
+libimagequant
+  Upstream:      https://github.com/lovell/libimagequant
+  Version:       Linux x64 and macOS 2.4.1 / Windows x64 2.4.1
+  Terms:         BSD-2-Clause
+  License text:  bundled/libimagequant/COPYRIGHT
+
+libnsgif
+  Upstream:      https://www.netsurf-browser.org/projects/libnsgif/
+  Version:       vendored inside libvips 8.18.3 on every platform; libnsgif
+                 carries no independent version number there. See note 4.
+  Terms:         MIT
+  License text:  bundled/libnsgif/COPYING
+
+libpng
+  Upstream:      https://github.com/pnggroup/libpng
+  Version:       Linux x64 and macOS 1.6.58 / Windows x64 1.6.58
+  Terms:         libpng License (PNG Reference Library License v2)
+  License text:  bundled/libpng/LICENSE
+
+librsvg
+  Upstream:      https://gitlab.gnome.org/GNOME/librsvg
+  Version:       Linux x64 and macOS 2.62.90 / Windows x64 2.62.3
+  Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/librsvg/COPYING.LIB
+
+libtiff
+  Upstream:      https://gitlab.com/libtiff/libtiff
+  Version:       Linux x64 and macOS d01a94b / Windows x64 732665c
+  Terms:         libtiff License (BSD-like)
+  License text:  bundled/libtiff/LICENSE.md
+
+libultrahdr
+  Upstream:      https://github.com/google/libultrahdr
+  Version:       Linux x64 and macOS 1acdbed / Windows x64 13a058f
+  Terms:         MIT AND Apache-2.0
+  License text:  bundled/libultrahdr/LICENSE
+
+libvips
+  Upstream:      https://github.com/libvips/libvips
+  Version:       Linux x64 and macOS 8.18.3 / Windows x64 8.18.3
+  Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/libvips/LICENSE
+
+libwebp
+  Upstream:      https://github.com/webmproject/libwebp
+  Version:       Linux x64 and macOS 1.6.0 / Windows x64 1.6.0
+  Terms:         BSD-3-Clause + Additional IP Rights Grant
+  License text:  bundled/libwebp/COPYING
+  License text:  bundled/libwebp/PATENTS
+
+libxml2
+  Upstream:      https://gitlab.gnome.org/GNOME/libxml2
+  Version:       Linux x64 and macOS 2.15.3 / Windows x64 2.15.3
+  Terms:         MIT
+  License text:  bundled/libxml2/Copyright
+
+mozjpeg
+  Upstream:      https://github.com/mozilla/mozjpeg
+  Version:       Linux x64 and macOS 0826579 / Windows x64 0826579
+  Terms:         Zlib AND IJG AND BSD-3-Clause
+  License text:  bundled/mozjpeg/LICENSE.md
+
+pango
+  Upstream:      https://gitlab.gnome.org/GNOME/pango
+  Version:       Linux x64 and macOS 1.58.0 / Windows x64 1.57.1
+  Terms:         LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/pango/COPYING
+
+pixman
+  Upstream:      https://gitlab.freedesktop.org/pixman/pixman
+  Version:       Linux x64 and macOS 0.46.4 / Windows x64 0.46.4
+  Terms:         MIT
+  License text:  bundled/pixman/COPYING
+
+proxy-libintl
+  Upstream:      https://github.com/frida/proxy-libintl
+  Version:       Linux x64 and macOS 0.5 / Windows x64 0.5
+  Terms:         LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
+  License text:  bundled/proxy-libintl/COPYING
+
+zlib-ng
+  Upstream:      https://github.com/zlib-ng/zlib-ng
+  Version:       Linux x64 and macOS 2.3.3 / Windows x64 2.3.3
+  Terms:         Zlib
+  License text:  bundled/zlib-ng/LICENSE.md
+
+
+4. Notes
+--------
+
+  Note 1 - Where a library is listed with more than one set of terms, the
+  bundled license file records which terms apply to which parts. This file does
+  not restate or interpret that allocation.
+
+  Note 2 - The upstream sharp-libvips notice states: "Use of libraries under the
+  terms of the LGPLv3 is via the 'any later version' clause of the LGPLv2 or
+  LGPLv2.1." The license file reproduced for each of those libraries is the
+  license text published by that library upstream, which is LGPL version 2 or
+  2.1 with an "or later" clause. The LGPL version 3 and GPL version 3 texts are
+  reproduced verbatim in bundled/libheif/COPYING.
+
+  Note 3 - The upstream sharp-libvips notice lists cairo as being used under the
+  Mozilla Public License 2.0. The COPYING file published by cairo 1.18.4 offers
+  cairo under the LGPL version 2.1 or the Mozilla Public License 1.1, and does
+  not mention MPL 2.0. All three cairo files are reproduced in bundled/cairo/.
+  This discrepancy is recorded, not resolved. LEGAL REVIEW RECOMMENDED.
+
+  Note 4 - libnsgif is not built as a separate library and has no entry in the
+  versions.json shipped with the binary packages. It is vendored into libvips
+  itself, under libvips/foreign/libnsgif. The license text in
+  bundled/libnsgif/COPYING is the COPYING file from that directory at libvips
+  tag v8.18.3, which is the exact libvips version shipped on both platforms.
+  libnsgif carries no independent version number there, so the "Version" column
+  above reads "vendored" rather than a release number.
+
+  Note 5 - Nine libraries are built at a different version or commit for Windows
+  x64 than for Linux x64 and macOS (expat, glib, libarchive, libffi, libheif,
+  librsvg, libtiff, libultrahdr and pango). The license file published upstream
+  at each Windows version was fetched and compared byte-for-byte against the
+  license file published at the corresponding Linux version; all nine pairs are
+  identical, so the single file referenced above covers every platform.
+
+  Note 6 - Every license file referenced above was copied byte-for-byte from the
+  npm package that this application redistributes, or from the library's own
+  canonical source repository at the exact version or commit recorded in
+  versions.json. No license text in this directory has been retyped, summarised
+  or edited.
+
+
+5. Location of the native libraries in installed packages
+----------------------------------------------------------
+
+  The sharp native addon and the prebuilt libvips shared libraries are shipped
+  as ordinary files outside the application archive (app.asar), under:
+
+    Linux    <install dir>/resources/app.asar.unpacked/node_modules/@img/
+    Windows  <install dir>\resources\app.asar.unpacked\node_modules\@img\
+    macOS    <app bundle>/Contents/Resources/app.asar.unpacked/node_modules/@img/
+
+  Specifically:
+
+    Linux    .../@img/sharp-libvips-linux-x64/lib/libvips-cpp.so.8.18.3
+             .../@img/sharp-linux-x64/lib/sharp-linux-x64-0.35.3.node
+    Windows  ...\@img\sharp-win32-x64\lib\libvips-42.dll
+             ...\@img\sharp-win32-x64\lib\libvips-cpp-8.18.3.dll
+             ...\@img\sharp-win32-x64\lib\sharp-win32-x64-0.35.3.node
+    macOS    .../@img/sharp-libvips-darwin-<arch>/lib/libvips-cpp.8.18.3.dylib
+             .../@img/sharp-darwin-<arch>/lib/sharp-darwin-<arch>-0.35.3.node
+
+  These files are not compressed into or otherwise merged with app.asar, and
+  they are not statically linked into the application executable.
+
+
+6. Source code availability
+---------------------------
+
+  Source code for the components covered by this file is published by their
+  authors at the URLs and versions listed above. In particular:
+
+    libvips 8.18.3
+      https://github.com/libvips/libvips  (tag v8.18.3)
+
+    sharp 0.35.3
+      https://github.com/lovell/sharp  (tag v0.35.3)
+
+    prebuilt libvips build scripts, @img/sharp-libvips-* 1.3.2
+      https://github.com/lovell/sharp-libvips  (tag v1.3.2)
+
+  The bundled libraries listed in section 3 publish their source at the upstream
+  URLs given there, at the versions and commits given there.
+
+  Whether these upstream references satisfy every source-provision obligation
+  that applies to this distribution, and whether a written offer or a shipped
+  source archive is additionally required, has not been determined here.
+  LEGAL REVIEW RECOMMENDED.
+
+
+7. Modification and relinking
+-----------------------------
+
+  This application has not modified the source code of libvips, of any library
+  bundled inside the prebuilt libvips distribution, or of sharp. The binaries
+  redistributed here are the unmodified binaries published in the npm packages
+  named in section 1.
+
+  The GNU Lesser General Public License grants the recipient of a work that uses
+  the Library the right to modify the Library and to reverse engineer for
+  debugging such modifications; the applicable conditions are stated in the
+  license texts reproduced in this directory and are not restated here.
