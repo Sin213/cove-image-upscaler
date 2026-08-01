@@ -336,7 +336,7 @@ function RowActions({
             onRefresh();
           }}
           className="row-icon"
-          aria-label="Re-run with current settings"
+          aria-label="Re-run with current mode and scale"
         >
           <RefreshIcon />
         </button>
@@ -344,7 +344,7 @@ function RowActions({
           className="tooltip-bubble"
           style={{ left: "auto", right: 0, transform: "translateY(4px)" }}
         >
-          Re-run with current scale
+          Re-run with current mode and scale
         </div>
       </div>
       <button

@@ -99,7 +99,8 @@ export function App() {
                 Cove Image Upscaler
               </h1>
               <p className="mt-1.5 max-w-[560px] text-[13px] text-text-3">
-                AI image upscaling — Real-ESRGAN for photos, Real-CUGAN for anime. Powered by NCNN Vulkan.
+                Real-ESRGAN for photos and Real-CUGAN for anime via NCNN Vulkan, plus exact
+                nearest-neighbor scaling for pixel art.
               </p>
             </div>
             <span className={`status-pill ${pillClass(statusState)}`}>

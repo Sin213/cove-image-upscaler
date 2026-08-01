@@ -20,6 +20,15 @@ type HintsByMode = {
   [M in Mode]: { [S in (typeof SCALES_BY_MODE)[M][number]]: Hint };
 };
 
+// One template so every Pixel scale states the same production contract:
+// nearest-neighbor, N x N blocks, no smoothing, artifacts enlarged not repaired.
+function pixelHint(s: (typeof PIXEL_SCALES)[number]): Hint {
+  return {
+    headline: `${s}× blocks`,
+    detail: `Exact nearest-neighbor enlargement. Every source pixel becomes ${s === 8 ? "an" : "a"} ${s} × ${s} block with no smoothing or blending. Existing compression artifacts are enlarged, not repaired.`,
+  };
+}
+
 const HINTS: HintsByMode = {
   photo: {
     2: { headline: "Recommended", detail: "Fastest. Balanced detail — works on any photo." },
@@ -32,12 +41,12 @@ const HINTS: HintsByMode = {
     4: { headline: "Maximum detail", detail: "Slowest. May tile-artifact on certain sources — drop to 2× if so." },
   },
   pixel: {
-    2: { headline: "2× blocks", detail: "Every source pixel becomes a 2 × 2 block. No smoothing or blending." },
-    3: { headline: "3× blocks", detail: "Every source pixel becomes a 3 × 3 block. No smoothing or blending." },
-    4: { headline: "4× blocks", detail: "Every source pixel becomes a 4 × 4 block. No smoothing or blending." },
-    5: { headline: "5× blocks", detail: "Every source pixel becomes a 5 × 5 block. Existing artifacts are preserved, not repaired." },
-    6: { headline: "6× blocks", detail: "Every source pixel becomes a 6 × 6 block. Existing artifacts are preserved, not repaired." },
-    8: { headline: "8× blocks", detail: "Every source pixel becomes an 8 × 8 block. Existing artifacts are preserved, not repaired." },
+    2: pixelHint(2),
+    3: pixelHint(3),
+    4: pixelHint(4),
+    5: pixelHint(5),
+    6: pixelHint(6),
+    8: pixelHint(8),
   },
 };
 
