@@ -1,9 +1,10 @@
 import { useStore } from "../store";
-import type { Mode, Scale } from "../types";
+import type { AiMode, Scale } from "../types";
 
 const SCALES: Scale[] = [2, 3, 4];
 
-const HINTS: Record<Mode, Record<Scale, { headline: string; detail: string }>> = {
+// AI modes only — pixel mode has no scale UI.
+const HINTS: Record<AiMode, Record<Scale, { headline: string; detail: string }>> = {
   photo: {
     2: { headline: "Recommended", detail: "Fastest. Balanced detail — works on any photo." },
     3: { headline: "Stronger detail", detail: "Slower than 2×. Good middle ground." },
@@ -21,6 +22,10 @@ export function ScalePicker() {
   const mode = useStore((s) => s.mode);
   const setScale = useStore((s) => s.setScale);
   const disabled = useStore((s) => s.isProcessing());
+
+  // Pixel mode has no scale UI and is not selectable today; this narrows `mode`
+  // to the AI modes that HINTS covers.
+  if (mode === "pixel") return null;
 
   return (
     <div className="flex flex-col gap-1.5">

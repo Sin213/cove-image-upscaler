@@ -84,6 +84,12 @@ export class Upscaler extends EventEmitter {
 
   private runJob(resolved: ResolvedJob): void {
     const { job, outputPath } = resolved;
+    if (job.mode === "pixel") {
+      // Guard before any binary resolution or command construction: pixel jobs
+      // must never spawn Real-ESRGAN or Real-CUGAN.
+      this.finishJob(job, outputPath, "error", "Pixel upscaling is not implemented yet.");
+      return;
+    }
     // realesrgan-x4plus is x4-only; passing -s 2 / -s 3 produces tile-stitch
     // artifacts. For photo mode at non-4x, run the model at native 4x to a
     // temp file, then resize down to the requested scale ourselves.
@@ -233,7 +239,14 @@ export class Upscaler extends EventEmitter {
     if (error) payload.error = error;
     if (status === "done") payload.outputPath = outputPath;
     this.emitProgress(payload);
-    this.drain();
+    // The job is fully settled above; only the queue continuation is deferred.
+    // Jobs that finish synchronously (the pixel guard, early failures) would
+    // otherwise recurse finishJob -> drain -> runJob once per queued job. If an
+    // enqueue starts the next job first, drain's active check makes this a
+    // no-op.
+    setImmediate(() => {
+      this.drain();
+    });
   }
 }
 
@@ -345,39 +358,54 @@ function humanizeError(
   return `${label} exited with code ${code ?? "?"}`;
 }
 
+function assertNever(value: never): never {
+  throw new Error(`Unhandled upscale job mode: ${JSON.stringify(value)}`);
+}
+
 function buildCommand(job: UpscaleJob, outputPath: string): BuiltCommand {
-  if (job.mode === "photo") {
-    // Always run x4plus at native 4x. For 2x/3x the upscaler post-resizes the
-    // result; passing -s 2/3 to an x4-only model yields tile-stitch artifacts.
-    return {
-      binary: realesrganBinary(),
-      label: "realesrgan-ncnn-vulkan",
-      args: [
-        "-i", job.inputPath,
-        "-o", outputPath,
-        "-n", "realesrgan-x4plus",
-        "-s", "4",
-        "-m", realesrganModelsDir(),
-        "-f", "png",
-      ],
-    };
+  switch (job.mode) {
+    case "photo":
+      // Always run x4plus at native 4x. For 2x/3x the upscaler post-resizes the
+      // result; passing -s 2/3 to an x4-only model yields tile-stitch artifacts.
+      return {
+        binary: realesrganBinary(),
+        label: "realesrgan-ncnn-vulkan",
+        args: [
+          "-i", job.inputPath,
+          "-o", outputPath,
+          "-n", "realesrgan-x4plus",
+          "-s", "4",
+          "-m", realesrganModelsDir(),
+          "-f", "png",
+        ],
+      };
+    case "anime": {
+      // Anime mode — Real-CUGAN. The valid `-n` (denoise) levels depend on scale:
+      //   x2: -1, 0, 1, 2, 3   (we pick 2 for balanced output)
+      //   x3: -1, 0, 3         (x3/x4 don't ship denoise2x; using -n 2 there causes
+      //   x4: -1, 0, 3          NCNN's `find_blob_index_by_name gap3 failed`)
+      // We default to no-denoise for x3/x4 to preserve anime line detail.
+      const denoise = job.scale === 2 ? "2" : "0";
+      return {
+        binary: realcuganBinary(),
+        label: "realcugan-ncnn-vulkan",
+        args: [
+          "-i", job.inputPath,
+          "-o", outputPath,
+          "-n", denoise,
+          "-s", String(job.scale),
+          "-m", realcuganModelsDir(),
+          "-f", "png",
+        ],
+      };
+    }
+    case "pixel":
+      // Tripwire: pixel jobs are local, not NCNN. Reaching here means a pixel
+      // job slipped past the runJob guard at the IPC boundary.
+      throw new Error(
+        "Pixel jobs cannot use the AI command builder: no NCNN backend applies to pixel mode.",
+      );
+    default:
+      return assertNever(job);
   }
-  // Anime mode — Real-CUGAN. The valid `-n` (denoise) levels depend on scale:
-  //   x2: -1, 0, 1, 2, 3   (we pick 2 for balanced output)
-  //   x3: -1, 0, 3         (x3/x4 don't ship denoise2x; using -n 2 there causes
-  //   x4: -1, 0, 3          NCNN's `find_blob_index_by_name gap3 failed`)
-  // We default to no-denoise for x3/x4 to preserve anime line detail.
-  const denoise = job.scale === 2 ? "2" : "0";
-  return {
-    binary: realcuganBinary(),
-    label: "realcugan-ncnn-vulkan",
-    args: [
-      "-i", job.inputPath,
-      "-o", outputPath,
-      "-n", denoise,
-      "-s", String(job.scale),
-      "-m", realcuganModelsDir(),
-      "-f", "png",
-    ],
-  };
 }

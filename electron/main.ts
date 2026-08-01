@@ -293,17 +293,24 @@ function registerIpc(): void {
   });
 
   ipcMain.handle("cove:enqueue", async (_e, jobs: UpscaleJob[]) => {
-    const status = ensureBinariesReady();
-    if (!status.ok) {
-      for (const j of jobs) {
-        mainWindow?.webContents.send("cove:progress", {
-          id: j.id,
-          percent: 0,
-          status: "error",
-          error: `Missing binary: ${status.missing.join(", ")}. Run: node scripts/download-binaries.mjs`,
-        });
+    // Pixel jobs have no NCNN backend, so a pixel-only batch must not be
+    // rejected for missing AI binaries; it needs to reach the upscaler's own
+    // pixel guard. Batches containing any AI job keep the existing batch-wide
+    // readiness behavior.
+    const requiresAiBinaries = jobs.some((j) => j.mode !== "pixel");
+    if (requiresAiBinaries) {
+      const status = ensureBinariesReady();
+      if (!status.ok) {
+        for (const j of jobs) {
+          mainWindow?.webContents.send("cove:progress", {
+            id: j.id,
+            percent: 0,
+            status: "error",
+            error: `Missing binary: ${status.missing.join(", ")}. Run: node scripts/download-binaries.mjs`,
+          });
+        }
+        return;
       }
-      return;
     }
     upscaler.enqueue(jobs);
   });
