@@ -2,9 +2,9 @@
 // Fetches NCNN Vulkan binaries (realesrgan + realcugan) and shared model
 // files for the host OS into resources/bin/<os>/ and resources/models/.
 //
-// Defaults to the host OS so `npm install` on Linux only pulls the Linux
-// zip, not the Windows/macOS ones. CI passes `--all` to populate all three
-// before the per-platform `electron-builder` step.
+// Supported targets are Windows and Linux. Defaults to the host OS so
+// `npm install` on Linux only pulls the Linux zip, not the Windows one; each
+// release job passes its own platform explicitly before `electron-builder`.
 //
 // Flow, per source archive:
 //   download → temp work dir → extract → stage → validate staged payload
@@ -66,13 +66,6 @@ export const PLATFORMS = {
     libExts: [".so", ".so.1"],
     // The Ubuntu archives link against the system Vulkan loader; no bundled
     // library is required for the binary to resolve.
-    requiredLibs: [],
-  },
-  mac: {
-    key: "mac",
-    suffix: "macos",
-    binExt: "",
-    libExts: [".dylib"],
     requiredLibs: [],
   },
   win: {
@@ -945,7 +938,7 @@ async function stagePayload(extractRoot, stageDir, spec, platform) {
   await cp(sourceBin, path.join(stageBin, binName), { force: true });
 
   // Sibling shared libraries the binary needs (vcomp DLLs on Windows,
-  // libomp.dylib on macOS, occasional .so on Linux).
+  // occasional .so on Linux).
   const binSrcDir = path.dirname(sourceBin);
   for (const e of await readdir(binSrcDir, { withFileTypes: true })) {
     if (!e.isFile() || e.name === binName) continue;
@@ -1142,16 +1135,30 @@ export async function installSource(opts) {
   }
 }
 
-function hostPlatformKey() {
-  if (process.platform === "win32") return "win";
-  if (process.platform === "darwin") return "mac";
-  return "linux";
+/**
+ * Cove ships Windows and Linux only. An unsupported host is named rather than
+ * quietly resolved to Linux, so a bootstrap run there fails loudly instead of
+ * installing a payload that will never be packaged.
+ */
+export function hostPlatformKey(hostPlatform = process.platform) {
+  if (hostPlatform === "win32") return "win";
+  if (hostPlatform === "linux") return "linux";
+  throw new Error(`Unsupported host platform: ${hostPlatform}`);
 }
 
-export function targetsFromArgs(argv) {
-  if (argv.includes("--all")) return Object.keys(PLATFORMS);
-  const wanted = argv.filter((a) => Object.keys(PLATFORMS).includes(a));
-  return wanted.length ? wanted : [hostPlatformKey()];
+export function targetsFromArgs(argv, hostPlatform = process.platform) {
+  const supported = Object.keys(PLATFORMS);
+  if (argv.includes("--all")) return supported;
+  // A typo'd or dropped platform must not fall through to the host default:
+  // that is how a release job silently packages the wrong payload.
+  const named = argv.filter((a) => !a.startsWith("--"));
+  const unsupported = named.filter((a) => !supported.includes(a));
+  if (unsupported.length) {
+    throw new Error(
+      `Unsupported platform target: ${unsupported.join(", ")} (supported: ${supported.join(", ")})`,
+    );
+  }
+  return named.length ? named : [hostPlatformKey(hostPlatform)];
 }
 
 /**
@@ -1161,10 +1168,12 @@ export function targetsFromArgs(argv) {
  */
 export async function runCli(argv = process.argv.slice(2), deps = {}) {
   const log = deps.log ?? console.log;
-  const targets = targetsFromArgs(argv);
-  log(`[cove] downloading binaries for: ${targets.join(", ")}`);
 
   try {
+    // Resolved inside the guard: an unsupported host or target is a failure to
+    // report with a nonzero exit code, not a crash.
+    const targets = targetsFromArgs(argv);
+    log(`[cove] downloading binaries for: ${targets.join(", ")}`);
     for (const platformKey of targets) {
       for (const [sourceKey, spec] of Object.entries(SOURCES)) {
         await installSource({

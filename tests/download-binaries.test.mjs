@@ -40,6 +40,8 @@ const {
   runCli,
   withTimeout,
   closeExtractionResources,
+  targetsFromArgs,
+  hostPlatformKey,
   PLATFORMS,
   SOURCES,
 } = mod;
@@ -1799,4 +1801,62 @@ test("runCli prints no Complete when cleanup is unsafe", async () => {
     lines.some((l) => l.includes("preserving work directory")),
     "the preserved work directory was not surfaced",
   );
+});
+
+// ---------------------------------------------------------------------------
+// platform targeting
+//
+// Cove ships Windows and Linux only. macOS is not built, signed, notarized or
+// released, so the bootstrap must not pretend it has a macOS payload and must
+// not silently substitute Linux for an unsupported host or a typo'd argument.
+// ---------------------------------------------------------------------------
+
+test("exactly two platforms are supported", () => {
+  assert.deepEqual(Object.keys(PLATFORMS).sort(), ["linux", "win"]);
+  assert.equal(PLATFORMS.mac, undefined, "macOS is still a bootstrap target");
+});
+
+test("--all means Windows plus Linux only", () => {
+  assert.deepEqual(targetsFromArgs(["--all"]).sort(), ["linux", "win"]);
+});
+
+test("an explicit platform selects only that platform", () => {
+  assert.deepEqual(targetsFromArgs(["win"], "linux"), ["win"]);
+  assert.deepEqual(targetsFromArgs(["linux"], "win32"), ["linux"]);
+});
+
+test("no argument falls back to the host platform", () => {
+  assert.deepEqual(targetsFromArgs([], "linux"), ["linux"]);
+  assert.deepEqual(targetsFromArgs([], "win32"), ["win"]);
+});
+
+test("a darwin host fails explicitly instead of pretending to be Linux", () => {
+  assert.throws(() => hostPlatformKey("darwin"), /Unsupported host platform: darwin/);
+  assert.throws(() => targetsFromArgs([], "darwin"), /Unsupported host platform: darwin/);
+});
+
+test("an unsupported explicit platform never becomes the host platform", () => {
+  for (const bad of ["mac", "darwin", "freebsd"]) {
+    assert.throws(
+      () => targetsFromArgs([bad], "linux"),
+      new RegExp(`Unsupported platform target.*${bad}`),
+      `${bad} was silently accepted`,
+    );
+  }
+});
+
+test("runCli exits nonzero on an unsupported target instead of installing the host payload", async () => {
+  const lines = [];
+  let downloaded = false;
+  const code = await runCli(["mac"], {
+    log: (m) => lines.push(String(m)),
+    downloadArchive: async () => {
+      downloaded = true;
+      throw new Error("unreachable");
+    },
+  });
+
+  assert.notEqual(code, 0, "an unsupported target must exit nonzero");
+  assert.equal(downloaded, false, "an unsupported target must not download anything");
+  assert.ok(!lines.some((l) => /Complete/i.test(l)), "Complete was printed for an unsupported target");
 });

@@ -27,6 +27,15 @@ jobs:
       - name: Install deps
         run: npm ci
 
+      # `postinstall` tolerates a failed download so ordinary development
+      # installs still work offline. A release must not: an incomplete payload
+      # ships installers where Pixel mode works and Photo/Anime modes do not.
+      # This gate re-runs the bootstrap strictly, for this runner's platform
+      # only, and fails the job before electron-builder if anything required
+      # is missing, empty, not a regular file, or a symlink.
+      - name: Verify AI payload (Linux)
+        run: npm run release:payload:linux
+
       - name: Build & package (Linux)
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -72,6 +81,12 @@ jobs:
 
       - name: Install deps
         run: npm ci
+
+      # Mandatory strict payload gate; see the Linux job for the rationale.
+      # Runs under the runner's default shell (PowerShell) and fails the job
+      # on a nonzero exit, so no tolerant shell expression is involved.
+      - name: Verify AI payload (Windows)
+        run: npm run release:payload:win
 
       - name: Build & package (Windows)
         env:

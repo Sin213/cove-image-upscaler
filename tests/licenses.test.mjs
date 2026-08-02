@@ -54,17 +54,17 @@ test('every license file on disk is referenced by the notice file', () => {
   for (const f of onDisk) assert.ok(refSet.has(f), `unreferenced license file: ${f}`);
 });
 
-/** Package name -> version the notice must record, for every packaged target. */
+/**
+ * Package name -> version the notice must record, for every packaged target.
+ * Cove ships Windows x64 and Linux x64 only; macOS is not a build target, so
+ * no darwin sharp package is distributed and none is asserted here.
+ */
 const EXPECTED_PACKAGES = {
   sharp: '0.35.3',
   '@img/colour': '1.1.0',
   '@img/sharp-linux-x64': '0.35.3',
   '@img/sharp-libvips-linux-x64': '1.3.2',
   '@img/sharp-win32-x64': '0.35.3',
-  '@img/sharp-darwin-x64': '0.35.3',
-  '@img/sharp-libvips-darwin-x64': '1.3.2',
-  '@img/sharp-darwin-arm64': '0.35.3',
-  '@img/sharp-libvips-darwin-arm64': '1.3.2',
 };
 
 test('notice file records the exact shipped package versions', () => {
@@ -78,7 +78,7 @@ test('notice file records the exact shipped package versions', () => {
 test('notice file covers every platform electron-builder targets', () => {
   const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
   // Every configured platform must have its sharp packages named in the notice.
-  const perPlatform = { linux: '@img/sharp-linux-x64', win: '@img/sharp-win32-x64', mac: '@img/sharp-darwin-x64' };
+  const perPlatform = { linux: '@img/sharp-linux-x64', win: '@img/sharp-win32-x64' };
   for (const [platform, packageName] of Object.entries(perPlatform)) {
     if (!pkg.build[platform]) continue;
     assert.ok(notices.includes(packageName), `${platform} is a build target but ${packageName} is not in the notice`);
