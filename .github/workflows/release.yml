@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
           TAG="v$(node -p "require('./package.json').version")"
           cd release
-          for f in *.AppImage *.deb latest*.yml; do
+          for f in *.AppImage *.deb *.blockmap latest*.yml; do
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
             gh release upload "$TAG" "$f.sha256" --clobber
@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           TAG="v$(node -p "require('./package.json').version")"
           cd release
-          for f in *-Setup.exe *-Portable.exe latest*.yml; do
+          for f in *-Setup.exe *-Portable.exe *.blockmap latest*.yml; do
             [ -f "$f" ] || continue
             sha256sum "$f" > "$f.sha256"
             gh release upload "$TAG" "$f.sha256" --clobber

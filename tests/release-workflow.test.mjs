@@ -219,3 +219,71 @@ test("macOS is absent from the release matrix", () => {
     assert.ok(!workflow.includes(token), `release.yml still references ${token}`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// Debian runtime dependencies
+// ---------------------------------------------------------------------------
+
+test("the Debian package declares the Vulkan loader the AI executables need", () => {
+  // The bundled NCNN executables link against libvulkan.so.1. Without an
+  // explicit dependency the .deb installs cleanly and Photo and Anime mode
+  // then fail at launch while Pixel mode keeps working.
+  const depends = pkg.build?.deb?.depends;
+  assert.ok(Array.isArray(depends), "build.deb.depends is not configured as an array");
+  assert.ok(depends.includes("libvulkan1"), "build.deb.depends is missing libvulkan1");
+});
+
+test("declaring libvulkan1 does not drop electron-builder's stock Debian dependencies", () => {
+  // An explicit depends array replaces the defaults rather than extending
+  // them, so the stock runtime requirements have to be restated.
+  const depends = pkg.build.deb.depends;
+  for (const stock of ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0"]) {
+    assert.ok(depends.includes(stock), `build.deb.depends dropped stock dependency ${stock}`);
+  }
+});
+
+test("no GPU vendor driver package is declared", () => {
+  // The package declares the loader only. Vendor ICDs stay the OS's job.
+  for (const banned of ["mesa", "nvidia", "amdgpu", "vulkan-sdk", "-dev"]) {
+    for (const dep of pkg.build.deb.depends) {
+      assert.ok(!dep.includes(banned), `build.deb.depends declares a GPU/driver package: ${dep}`);
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// blockmap checksum sidecars
+// ---------------------------------------------------------------------------
+
+test("both release jobs checksum .blockmap assets", () => {
+  for (const name of ["build-linux", "build-windows"]) {
+    const body = job(name);
+    const loop = body.match(/for f in ([^;]+); do/);
+    assert.ok(loop, `${name} job has no sidecar loop`);
+    assert.ok(
+      loop[1].includes("*.blockmap"),
+      `${name} sidecar loop does not cover *.blockmap: ${loop[1].trim()}`,
+    );
+  }
+});
+
+test("each release asset keeps its own .sha256 sidecar", () => {
+  for (const name of ["build-linux", "build-windows"]) {
+    assert.ok(
+      job(name).includes('sha256sum "$f" > "$f.sha256"'),
+      `${name} job no longer writes an individual sidecar per asset`,
+    );
+  }
+  assert.ok(
+    !workflow.includes("checksums-sha256"),
+    "release.yml introduces a combined checksum manifest",
+  );
+});
+
+// ---------------------------------------------------------------------------
+// updater dependency floor
+// ---------------------------------------------------------------------------
+
+test("electron-updater is pinned to a release with the 6.8.9 fixes", () => {
+  assert.equal(pkg.dependencies["electron-updater"], "^6.8.9");
+});

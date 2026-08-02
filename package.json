@@ -30,7 +30,7 @@
     "test": "npm run build:electron && node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "electron-updater": "^6.8.3",
+    "electron-updater": "^6.8.9",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "sharp": "0.35.3",
@@ -95,6 +95,20 @@
       "category": "Graphics",
       "maintainer": "Cove <79215527+Sin213@users.noreply.github.com>",
       "artifactName": "Cove-Image-Upscaler-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libuuid1",
+        "libsecret-1-0",
+        "libvulkan1"
+      ]
     },
     "win": {
       "target": [
