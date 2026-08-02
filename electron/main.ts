@@ -4,7 +4,9 @@ import * as path from "node:path";
 import * as fs from "node:fs";
 import { Upscaler } from "./upscaler";
 import { ensureBinariesReady } from "./paths";
-import type { ImportedImage, UpscaleJob } from "./types";
+import type { ImportedImage } from "./types";
+import { isNavigationAllowed } from "./navigation-policy";
+import { validateEnqueueBatch } from "./validate-job";
 import { setupPortableMode } from "./portable";
 import { spawn } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -140,6 +142,18 @@ function createWindow(): void {
   });
 
   if (saved?.maximized) mainWindow.maximize();
+
+  // The renderer is local and opens no legitimate child windows. Anything
+  // else is unexpected, so navigation outside the packaged dist directory
+  // (or the configured dev origin) is denied, and every window-open request
+  // is refused outright.
+  const appDistDir = path.join(app.getAppPath(), "dist");
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    if (!isNavigationAllowed({ targetUrl: url, appDistDir, devServerUrl: DEV_URL })) {
+      event.preventDefault();
+    }
+  });
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
 
   if (DEV_URL) {
     mainWindow.loadURL(DEV_URL);
@@ -292,7 +306,24 @@ function registerIpc(): void {
     }
   });
 
-  ipcMain.handle("cove:enqueue", async (_e, jobs: UpscaleJob[]) => {
+  ipcMain.handle("cove:enqueue", async (_e, payload: unknown) => {
+    // Runtime validation runs before anything else inspects the payload: the
+    // rest of this handler leads to process spawning and filesystem writes.
+    const validated = validateEnqueueBatch(payload);
+    if (!validated.ok) {
+      for (const issue of validated.issues) {
+        mainWindow?.webContents.send("cove:progress", {
+          id: issue.id,
+          percent: 0,
+          status: "error",
+          error: issue.message,
+        });
+      }
+      console.warn("cove:enqueue rejected:", validated.batchError);
+      return;
+    }
+    const jobs = validated.jobs;
+
     // Pixel jobs have no NCNN backend, so a pixel-only batch must not be
     // rejected for missing AI binaries; it needs to reach the upscaler's own
     // pixel guard. Batches containing any AI job keep the existing batch-wide

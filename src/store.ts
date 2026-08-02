@@ -70,7 +70,10 @@ interface State {
 
   startJob: (imageId: string, jobId: string, runSettings: JobSelection) => void;
   applyProgress: (p: JobProgress) => void;
-  resetStatuses: () => void;
+  // Without arguments, resets the whole queue. With a list of image IDs,
+  // resets only those entries so completed siblings keep their done state,
+  // output path and history.
+  resetStatuses: (imageIds?: readonly string[]) => void;
 
   isProcessing: () => boolean;
 }
@@ -355,16 +358,22 @@ export const useStore = create<State>((set, get) => ({
       return { queue, logs };
     }),
 
-  resetStatuses: () =>
+  // Entries are addressed by image ID: an idle or never-run entry has no
+  // jobId yet, so jobId cannot identify the full eligible selection.
+  resetStatuses: (imageIds) =>
     set((state) => ({
-      queue: state.queue.map((q) => ({
-        ...q,
-        jobId: null,
-        status: "idle",
-        percent: 0,
-        error: undefined,
-        startedAt: undefined,
-      })),
+      queue: state.queue.map((q) =>
+        imageIds && !imageIds.includes(q.image.id)
+          ? q
+          : {
+              ...q,
+              jobId: null,
+              status: "idle",
+              percent: 0,
+              error: undefined,
+              startedAt: undefined,
+            },
+      ),
     })),
 
   isProcessing: () =>

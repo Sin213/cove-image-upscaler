@@ -1,3 +1,4 @@
+import { selectEligibleEntries } from "../../electron/queue-selection";
 import { selectJobSettings, useStore } from "../store";
 import type { UpscaleJob } from "../types";
 
@@ -11,7 +12,9 @@ export function UpscaleButton() {
   const clearImages = useStore((s) => s.clearImages);
   const processing = useStore((s) => s.isProcessing());
 
-  const queued = queue.filter((q) => q.status !== "done");
+  // The label count and the enqueue path read the same selection, so the
+  // button can never start more jobs than it says it will.
+  const queued = selectEligibleEntries(queue);
   const hasWork = queued.length > 0;
 
   const onClick = async () => {
@@ -24,8 +27,13 @@ export function UpscaleButton() {
     // Validate the mode/scale pair before any queue state is mutated.
     const selection = selectJobSettings(mode, scale);
 
-    resetStatuses();
-    const jobs: UpscaleJob[] = queue.map((q) => {
+    // Re-read the selection at click time so it reflects current state, and
+    // reset only those entries: completed rows keep their output and history.
+    const selected = selectEligibleEntries(queue);
+    if (selected.length === 0) return;
+
+    resetStatuses(selected.map((q) => q.image.id));
+    const jobs: UpscaleJob[] = selected.map((q) => {
       const jobId = `job-${q.image.id}-${Date.now()}`;
       startJob(q.image.id, jobId, selection);
       return {
