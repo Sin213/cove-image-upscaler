@@ -1,6 +1,6 @@
 {
   "name": "cove-image-upscaler",
-  "version": "2.1.3",
+  "version": "2.2.0",
   "description": "Desktop image upscaler with Real-ESRGAN, Real-CUGAN, and exact nearest-neighbor Pixel mode.",
   "homepage": "https://github.com/Sin213/cove-image-upscaler",
   "main": "dist-electron/main.js",
