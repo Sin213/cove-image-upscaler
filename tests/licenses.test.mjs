@@ -31,7 +31,7 @@ test('notice file is present and non-empty', () => {
 });
 
 test('notice file references at least one license text per section', () => {
-  assert.ok(referenced.length >= 30, `only ${referenced.length} license texts referenced`);
+  assert.ok(referenced.length >= 41, `only ${referenced.length} license texts referenced`);
 });
 
 test('every referenced license path exists, is non-empty and stays inside the license dir', () => {
@@ -100,6 +100,106 @@ test('no license file leaks a local absolute or scratch path', () => {
       assert.ok(!text.includes(bad), `${relative(ROOT, file)} contains ${bad}`);
     }
   }
+});
+
+/**
+ * AI payload projects the notice must cover, mapped to the license file that
+ * must exist on disk and the substrings that file must contain. Substring
+ * checks only - the license texts are copied verbatim from upstream and are
+ * never snapshotted here.
+ */
+const EXPECTED_AI_LICENSES = {
+  'realesrgan-ncnn-vulkan': {
+    file: 'ai/realesrgan-ncnn-vulkan/LICENSE',
+    contains: ['MIT', 'Xintao Wang', 'nihui'],
+  },
+  'Real-ESRGAN': {
+    file: 'ai/real-esrgan/LICENSE',
+    contains: ['BSD 3-Clause License', 'Xintao Wang'],
+  },
+  'realcugan-ncnn-vulkan': {
+    file: 'ai/realcugan-ncnn-vulkan/LICENSE',
+    contains: ['MIT', 'nihui'],
+  },
+  'Real-CUGAN': {
+    file: 'ai/real-cugan/LICENSE',
+    contains: ['MIT', 'bilibili'],
+  },
+  ncnn: {
+    file: 'ai/ncnn/LICENSE.txt',
+    contains: ['THL A29 Limited', 'BSD 3-Clause License'],
+  },
+};
+
+test('every AI payload license file exists and is non-empty', () => {
+  for (const [project, { file }] of Object.entries(EXPECTED_AI_LICENSES)) {
+    const full = join(LICENSE_DIR, file);
+    assert.ok(statSync(full).size > 0, `empty or missing license file for ${project}: ${file}`);
+  }
+});
+
+test('each AI payload license file carries its expected identifier and copyright holder', () => {
+  for (const [project, { file, contains }] of Object.entries(EXPECTED_AI_LICENSES)) {
+    const text = readFileSync(join(LICENSE_DIR, file), 'utf8');
+    for (const needle of contains) {
+      assert.ok(text.includes(needle), `${file} (${project}) does not contain ${needle}`);
+    }
+  }
+});
+
+test('notice file names every AI payload project', () => {
+  for (const project of Object.keys(EXPECTED_AI_LICENSES)) {
+    assert.ok(notices.includes(project), `notice file does not name ${project}`);
+  }
+});
+
+test('notice file records the exact distributed AI release tokens', () => {
+  for (const token of ['v0.2.5.0', '20220424', '20220728']) {
+    assert.ok(notices.includes(token), `notice file does not record release token ${token}`);
+  }
+});
+
+/**
+ * The bootstrap copies the complete upstream model directories and
+ * build.extraResources packages resources/models wholesale, so the notice must
+ * name every shipped model family - not only the ones the app invokes.
+ */
+test('notice file names every shipped model family, not only the ones used at runtime', () => {
+  for (const family of [
+    'realesrgan-x4plus',
+    'realesrgan-x4plus-anime',
+    'realesr-animevideov3',
+    'models-se',
+    'models-pro',
+    'models-nose',
+  ]) {
+    assert.ok(notices.includes(family), `notice file does not name shipped model family ${family}`);
+  }
+});
+
+test('notice file records that ncnn is statically linked into both executables', () => {
+  assert.match(notices, /ncnn/);
+  assert.match(notices, /statically linked/i);
+  assert.match(notices, /both\s+(AI\s+)?executables/i);
+});
+
+test('notice file records vcomp140.dll and that no debug runtime is distributed', () => {
+  assert.ok(notices.includes('vcomp140.dll'), 'notice file does not mention vcomp140.dll');
+  assert.match(notices, /no debug runtime is distributed/i);
+  assert.ok(!notices.includes('vcomp140d.dll'), 'notice file must not describe a distributed debug runtime');
+});
+
+test('notice file carries no stale macOS content', () => {
+  for (const token of ['darwin', 'macOS', '.dmg', 'app bundle']) {
+    assert.ok(!notices.includes(token), `notice file still contains macOS token: ${token}`);
+  }
+});
+
+test('the absolute-path leak check covers the AI license directory', () => {
+  const aiFiles = walk(join(LICENSE_DIR, 'ai')).map((f) => relative(LICENSE_DIR, f).split(sep).join('/'));
+  assert.ok(aiFiles.length >= Object.keys(EXPECTED_AI_LICENSES).length);
+  const walked = walk(LICENSE_DIR).map((f) => relative(LICENSE_DIR, f).split(sep).join('/'));
+  for (const f of aiFiles) assert.ok(walked.includes(f), `leak walk misses ${f}`);
 });
 
 test('electron-builder packages the license directory into every target', () => {

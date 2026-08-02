@@ -67,6 +67,7 @@ export const PLATFORMS = {
     // The Ubuntu archives link against the system Vulkan loader; no bundled
     // library is required for the binary to resolve.
     requiredLibs: [],
+    allowedLibs: [],
   },
   win: {
     key: "win",
@@ -76,8 +77,23 @@ export const PLATFORMS = {
     // Both Windows archives ship vcomp140.dll beside the executable; without
     // it the binary fails to start.
     requiredLibs: ["vcomp140.dll"],
+    // Explicit staging allowlist. The upstream Real-ESRGAN Windows archive also
+    // ships vcomp140d.dll, Microsoft's debug OpenMP runtime, which is not
+    // required at runtime and is not redistributable; matching on the file
+    // extension alone used to drag it into the payload.
+    allowedLibs: ["vcomp140.dll"],
   },
 };
+
+/**
+ * Whether a sibling file found beside the executable may be staged into the
+ * payload. Membership of `allowedLibs` is the only rule; the file extension is
+ * never sufficient on its own.
+ */
+export function isAllowedLib(platform, fileName) {
+  const lower = fileName.toLowerCase();
+  return (platform.allowedLibs ?? []).some((allowed) => allowed.toLowerCase() === lower);
+}
 
 export const SOURCES = {
   realesrgan: {
@@ -937,13 +953,13 @@ async function stagePayload(extractRoot, stageDir, spec, platform) {
   if (!sourceBin) throw new Error(`Binary ${binName} not found in archive`);
   await cp(sourceBin, path.join(stageBin, binName), { force: true });
 
-  // Sibling shared libraries the binary needs (vcomp DLLs on Windows,
-  // occasional .so on Linux).
+  // Sibling shared libraries the binary needs. Staging goes through the
+  // per-platform allowlist, never through the file extension, so nothing the
+  // archive happens to carry is redistributed by accident.
   const binSrcDir = path.dirname(sourceBin);
   for (const e of await readdir(binSrcDir, { withFileTypes: true })) {
     if (!e.isFile() || e.name === binName) continue;
-    const lower = e.name.toLowerCase();
-    if (platform.libExts.some((ext) => lower.endsWith(ext))) {
+    if (isAllowedLib(platform, e.name)) {
       await cp(path.join(binSrcDir, e.name), path.join(stageBin, e.name), { force: true });
     }
   }

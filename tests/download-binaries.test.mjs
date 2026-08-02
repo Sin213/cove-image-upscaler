@@ -42,6 +42,7 @@ const {
   closeExtractionResources,
   targetsFromArgs,
   hostPlatformKey,
+  isAllowedLib,
   PLATFORMS,
   SOURCES,
 } = mod;
@@ -441,6 +442,55 @@ test("the Windows manifest requires the exact runtime binaries and models", () =
   ]) {
     assert.ok(cugan.models.includes(rel), `missing required model ${rel}`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// staged library allowlist: the upstream Windows archives also ship Microsoft's
+// debug OpenMP runtime, which must never reach the payload
+// ---------------------------------------------------------------------------
+
+test("no platform requires the Microsoft debug OpenMP runtime", () => {
+  for (const [key, platform] of Object.entries(PLATFORMS)) {
+    assert.ok(!platform.requiredLibs.includes("vcomp140d.dll"), `${key} requires a debug runtime`);
+  }
+});
+
+test("the Windows library allowlist accepts the release runtime and rejects debug runtimes", () => {
+  assert.equal(isAllowedLib(PLATFORMS.win, "vcomp140.dll"), true);
+  assert.equal(isAllowedLib(PLATFORMS.win, "VCOMP140.DLL"), true, "allowlist must be case-insensitive");
+  for (const bad of ["vcomp140d.dll", "msvcp140d.dll", "ucrtbased.dll"]) {
+    assert.equal(isAllowedLib(PLATFORMS.win, bad), false, `${bad} must not be staged`);
+  }
+});
+
+test("every allowlisted Windows library is one the manifest actually requires", () => {
+  for (const name of PLATFORMS.win.allowedLibs) {
+    assert.ok(PLATFORMS.win.requiredLibs.includes(name), `${name} is staged but not required`);
+  }
+  assert.equal(PLATFORMS.linux.allowedLibs.length, 0);
+});
+
+test("installSource stages an allowlisted DLL and never the debug runtime", async () => {
+  const dir = tmp();
+  const root = path.join(dir, "root");
+  const entries = [
+    ...standardFixtureEntries(),
+    { name: "bin/vcomp140.dll", data: "RELEASE-OPENMP", method: "store" },
+    { name: "bin/vcomp140d.dll", data: "DEBUG-OPENMP", method: "store" },
+  ];
+  const zipPath = writeFixture(dir, entries);
+  const platform = { ...FAKE_PLATFORM, allowedLibs: ["vcomp140.dll"], requiredLibs: ["vcomp140.dll"] };
+
+  await installSource(baseInstallArgs(root, zipPath, { platform }));
+
+  const binDir = path.join(root, "resources", "bin", "win");
+  assert.ok(existsSync(path.join(binDir, "photo-tool.exe")));
+  assert.ok(existsSync(path.join(binDir, "vcomp140.dll")), "the required release runtime was not installed");
+  assert.equal(
+    existsSync(path.join(binDir, "vcomp140d.dll")),
+    false,
+    "the Microsoft debug runtime must never be installed",
+  );
 });
 
 // ---------------------------------------------------------------------------

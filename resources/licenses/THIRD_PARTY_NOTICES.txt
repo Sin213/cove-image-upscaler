@@ -8,10 +8,10 @@ file in the application source repository. The components listed below are
 third-party software that is redistributed with this application and remains
 governed by its own license terms, reproduced in full in this directory.
 
-This file covers the sharp image-processing library and the prebuilt libvips
-binaries it uses. Other third-party components that this application downloads
-or ships separately (for example the Real-ESRGAN and Real-CUGAN executables and
-their model files) are not covered by this file.
+Sections 1 to 7 cover the sharp image-processing library and the prebuilt
+libvips binaries it uses. Section 8 covers the AI upscaling payload: the
+Real-ESRGAN and Real-CUGAN ncnn/Vulkan executables and their model files, which
+are fetched at build time and redistributed with this application.
 
 
 1. sharp and platform packages
@@ -29,14 +29,6 @@ their model files) are not covered by this file.
   Windows x64 builds
   @img/sharp-win32-x64             0.35.3   Apache-2.0 AND LGPL-3.0-or-later
 
-  macOS x64 builds
-  @img/sharp-darwin-x64            0.35.3   Apache-2.0
-  @img/sharp-libvips-darwin-x64    1.3.2    LGPL-3.0-or-later
-
-  macOS arm64 builds
-  @img/sharp-darwin-arm64          0.35.3   Apache-2.0
-  @img/sharp-libvips-darwin-arm64  1.3.2    LGPL-3.0-or-later
-
   Copyright 2013 Lovell Fuller and others.
 
   Upstream:      https://github.com/lovell/sharp
@@ -45,12 +37,11 @@ their model files) are not covered by this file.
 
   The Apache-2.0 text in sharp/LICENSE is the LICENSE file published in the
   sharp 0.35.3 npm package. The same text is published in
-  @img/sharp-linux-x64, @img/sharp-darwin-x64 and @img/sharp-darwin-arm64
-  0.35.3, and in @img/sharp-win32-x64 0.35.3 differing only in line endings.
-  None of these packages contains a NOTICE file.
+  @img/sharp-linux-x64 0.35.3, and in @img/sharp-win32-x64 0.35.3 differing
+  only in line endings. Neither package contains a NOTICE file.
 
-  On Linux x64 and on macOS the prebuilt libvips shared library is supplied by
-  a separate @img/sharp-libvips-* package at version 1.3.2. On Windows x64 the
+  On Linux x64 the prebuilt libvips shared library is supplied by a separate
+  @img/sharp-libvips-linux-x64 package at version 1.3.2. On Windows x64 the
   prebuilt libvips DLLs are supplied inside @img/sharp-win32-x64 0.35.3 itself;
   there is no separate @img/sharp-libvips-win32-x64 package in this
   application's dependency tree.
@@ -59,7 +50,7 @@ their model files) are not covered by this file.
 2. libvips
 ----------
 
-  libvips version 8.18.3 on Linux x64, Windows x64 and macOS (x64 and arm64).
+  libvips version 8.18.3 on Linux x64 and Windows x64.
 
   Upstream:      https://github.com/libvips/libvips  (tag v8.18.3)
   License text:  bundled/libvips/LICENSE  (GNU LGPL, Version 2.1)
@@ -79,12 +70,9 @@ their model files) are not covered by this file.
   verbatim from the upstream project in sharp-libvips/THIRD-PARTY-NOTICES.md
   (lovell/sharp-libvips, tag v1.3.2). The versions below are read from the
   versions.json files shipped inside the exact binary packages this application
-  redistributes. The versions.json files in @img/sharp-libvips-darwin-x64 and
-  @img/sharp-libvips-darwin-arm64 1.3.2 are byte-identical to the Linux x64
-  one, and their licensing tables are identical too, so the "Linux / macOS"
-  column covers all three.
+  redistributes.
 
-  Library        Linux / macOS  Windows x64    Used under the terms of
+  Library        Linux x64      Windows x64    Used under the terms of
   -------------  -------------  -------------  -----------------------
   aom            3.14.1         3.14.1         BSD-2-Clause + Alliance for Open Media Patent License 1.0
   cairo          1.18.4         1.18.4         LGPL-2.1-or-later OR MPL-1.1 (see note 3)
@@ -120,14 +108,14 @@ their model files) are not covered by this file.
 
 aom
   Upstream:      https://aomedia.googlesource.com/aom
-  Version:       Linux x64 and macOS 3.14.1 / Windows x64 3.14.1
+  Version:       Linux x64 3.14.1 / Windows x64 3.14.1
   Terms:         BSD-2-Clause + Alliance for Open Media Patent License 1.0
   License text:  bundled/aom/LICENSE
   License text:  bundled/aom/PATENTS
 
 cairo
   Upstream:      https://gitlab.freedesktop.org/cairo/cairo
-  Version:       Linux x64 and macOS 1.18.4 / Windows x64 1.18.4
+  Version:       Linux x64 1.18.4 / Windows x64 1.18.4
   Terms:         LGPL-2.1-or-later OR MPL-1.1 (see note 3)
   License text:  bundled/cairo/COPYING
   License text:  bundled/cairo/COPYING-LGPL-2.1
@@ -135,85 +123,85 @@ cairo
 
 cgif
   Upstream:      https://github.com/dloebl/cgif
-  Version:       Linux x64 and macOS 0.5.3 / Windows x64 0.5.3
+  Version:       Linux x64 0.5.3 / Windows x64 0.5.3
   Terms:         MIT
   License text:  bundled/cgif/LICENSE
 
 expat
   Upstream:      https://github.com/libexpat/libexpat
-  Version:       Linux x64 and macOS 2.8.2 / Windows x64 2.8.1
+  Version:       Linux x64 2.8.2 / Windows x64 2.8.1
   Terms:         MIT
   License text:  bundled/expat/COPYING
 
 fontconfig
   Upstream:      https://gitlab.freedesktop.org/fontconfig/fontconfig
-  Version:       Linux x64 and macOS 2.18.1 / Windows x64 2.18.1
+  Version:       Linux x64 2.18.1 / Windows x64 2.18.1
   Terms:         fontconfig License (BSD-like)
   License text:  bundled/fontconfig/COPYING
 
 freetype
   Upstream:      https://gitlab.freedesktop.org/freetype/freetype
-  Version:       Linux x64 and macOS 2.14.3 / Windows x64 2.14.3
+  Version:       Linux x64 2.14.3 / Windows x64 2.14.3
   Terms:         FreeType License (BSD-like)
   License text:  bundled/freetype/FTL.TXT
 
 fribidi
   Upstream:      https://github.com/fribidi/fribidi
-  Version:       Linux x64 and macOS 1.0.16 / Windows x64 1.0.16
+  Version:       Linux x64 1.0.16 / Windows x64 1.0.16
   Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/fribidi/COPYING
 
 glib
   Upstream:      https://gitlab.gnome.org/GNOME/glib
-  Version:       Linux x64 and macOS 2.89.1 / Windows x64 2.89.0
+  Version:       Linux x64 2.89.1 / Windows x64 2.89.0
   Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/glib/LGPL-2.1-or-later.txt
 
 harfbuzz
   Upstream:      https://github.com/harfbuzz/harfbuzz
-  Version:       Linux x64 and macOS 14.2.1 / Windows x64 14.2.1
+  Version:       Linux x64 14.2.1 / Windows x64 14.2.1
   Terms:         MIT ("Old MIT")
   License text:  bundled/harfbuzz/COPYING
 
 highway
   Upstream:      https://github.com/google/highway
-  Version:       Linux x64 and macOS 1.4.0 / Windows x64 1.4.0
+  Version:       Linux x64 1.4.0 / Windows x64 1.4.0
   Terms:         Apache-2.0 OR BSD-3-Clause
   License text:  bundled/highway/LICENSE
 
 lcms
   Upstream:      https://github.com/mm2/Little-CMS
-  Version:       Linux x64 and macOS 2.19.1 / Windows x64 2.19.1
+  Version:       Linux x64 2.19.1 / Windows x64 2.19.1
   Terms:         MIT
   License text:  bundled/lcms/LICENSE
 
 libarchive
   Upstream:      https://github.com/libarchive/libarchive
-  Version:       Linux x64 and macOS 3.8.8 / Windows x64 3.8.7
+  Version:       Linux x64 3.8.8 / Windows x64 3.8.7
   Terms:         BSD-2-Clause
   License text:  bundled/libarchive/COPYING
 
 libexif
   Upstream:      https://github.com/libexif/libexif
-  Version:       Linux x64 and macOS 0.6.26 / Windows x64 0.6.26
+  Version:       Linux x64 0.6.26 / Windows x64 0.6.26
   Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/libexif/COPYING
 
 libffi
   Upstream:      https://github.com/libffi/libffi
-  Version:       Linux x64 and macOS 3.6.0 / Windows x64 3.5.2
+  Version:       Linux x64 3.6.0 / Windows x64 3.5.2
   Terms:         MIT
   License text:  bundled/libffi/LICENSE
 
 libheif
   Upstream:      https://github.com/strukturag/libheif
-  Version:       Linux x64 and macOS 1.23.1 / Windows x64 1.23.0
+  Version:       Linux x64 1.23.1 / Windows x64 1.23.0
   Terms:         LGPL-3.0-or-later
   License text:  bundled/libheif/COPYING
 
 libimagequant
   Upstream:      https://github.com/lovell/libimagequant
-  Version:       Linux x64 and macOS 2.4.1 / Windows x64 2.4.1
+  Version:       Linux x64 2.4.1 / Windows x64 2.4.1
   Terms:         BSD-2-Clause
   License text:  bundled/libimagequant/COPYRIGHT
 
@@ -226,74 +214,74 @@ libnsgif
 
 libpng
   Upstream:      https://github.com/pnggroup/libpng
-  Version:       Linux x64 and macOS 1.6.58 / Windows x64 1.6.58
+  Version:       Linux x64 1.6.58 / Windows x64 1.6.58
   Terms:         libpng License (PNG Reference Library License v2)
   License text:  bundled/libpng/LICENSE
 
 librsvg
   Upstream:      https://gitlab.gnome.org/GNOME/librsvg
-  Version:       Linux x64 and macOS 2.62.90 / Windows x64 2.62.3
+  Version:       Linux x64 2.62.90 / Windows x64 2.62.3
   Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/librsvg/COPYING.LIB
 
 libtiff
   Upstream:      https://gitlab.com/libtiff/libtiff
-  Version:       Linux x64 and macOS d01a94b / Windows x64 732665c
+  Version:       Linux x64 d01a94b / Windows x64 732665c
   Terms:         libtiff License (BSD-like)
   License text:  bundled/libtiff/LICENSE.md
 
 libultrahdr
   Upstream:      https://github.com/google/libultrahdr
-  Version:       Linux x64 and macOS 1acdbed / Windows x64 13a058f
+  Version:       Linux x64 1acdbed / Windows x64 13a058f
   Terms:         MIT AND Apache-2.0
   License text:  bundled/libultrahdr/LICENSE
 
 libvips
   Upstream:      https://github.com/libvips/libvips
-  Version:       Linux x64 and macOS 8.18.3 / Windows x64 8.18.3
+  Version:       Linux x64 8.18.3 / Windows x64 8.18.3
   Terms:         LGPL-2.1-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/libvips/LICENSE
 
 libwebp
   Upstream:      https://github.com/webmproject/libwebp
-  Version:       Linux x64 and macOS 1.6.0 / Windows x64 1.6.0
+  Version:       Linux x64 1.6.0 / Windows x64 1.6.0
   Terms:         BSD-3-Clause + Additional IP Rights Grant
   License text:  bundled/libwebp/COPYING
   License text:  bundled/libwebp/PATENTS
 
 libxml2
   Upstream:      https://gitlab.gnome.org/GNOME/libxml2
-  Version:       Linux x64 and macOS 2.15.3 / Windows x64 2.15.3
+  Version:       Linux x64 2.15.3 / Windows x64 2.15.3
   Terms:         MIT
   License text:  bundled/libxml2/Copyright
 
 mozjpeg
   Upstream:      https://github.com/mozilla/mozjpeg
-  Version:       Linux x64 and macOS 0826579 / Windows x64 0826579
+  Version:       Linux x64 0826579 / Windows x64 0826579
   Terms:         Zlib AND IJG AND BSD-3-Clause
   License text:  bundled/mozjpeg/LICENSE.md
 
 pango
   Upstream:      https://gitlab.gnome.org/GNOME/pango
-  Version:       Linux x64 and macOS 1.58.0 / Windows x64 1.57.1
+  Version:       Linux x64 1.58.0 / Windows x64 1.57.1
   Terms:         LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/pango/COPYING
 
 pixman
   Upstream:      https://gitlab.freedesktop.org/pixman/pixman
-  Version:       Linux x64 and macOS 0.46.4 / Windows x64 0.46.4
+  Version:       Linux x64 0.46.4 / Windows x64 0.46.4
   Terms:         MIT
   License text:  bundled/pixman/COPYING
 
 proxy-libintl
   Upstream:      https://github.com/frida/proxy-libintl
-  Version:       Linux x64 and macOS 0.5 / Windows x64 0.5
+  Version:       Linux x64 0.5 / Windows x64 0.5
   Terms:         LGPL-2.0-or-later, used as LGPL-3.0 (see note 2)
   License text:  bundled/proxy-libintl/COPYING
 
 zlib-ng
   Upstream:      https://github.com/zlib-ng/zlib-ng
-  Version:       Linux x64 and macOS 2.3.3 / Windows x64 2.3.3
+  Version:       Linux x64 2.3.3 / Windows x64 2.3.3
   Terms:         Zlib
   License text:  bundled/zlib-ng/LICENSE.md
 
@@ -327,7 +315,7 @@ zlib-ng
   above reads "vendored" rather than a release number.
 
   Note 5 - Nine libraries are built at a different version or commit for Windows
-  x64 than for Linux x64 and macOS (expat, glib, libarchive, libffi, libheif,
+  x64 than for Linux x64 (expat, glib, libarchive, libffi, libheif,
   librsvg, libtiff, libultrahdr and pango). The license file published upstream
   at each Windows version was fetched and compared byte-for-byte against the
   license file published at the corresponding Linux version; all nine pairs are
@@ -348,7 +336,6 @@ zlib-ng
 
     Linux    <install dir>/resources/app.asar.unpacked/node_modules/@img/
     Windows  <install dir>\resources\app.asar.unpacked\node_modules\@img\
-    macOS    <app bundle>/Contents/Resources/app.asar.unpacked/node_modules/@img/
 
   Specifically:
 
@@ -357,8 +344,6 @@ zlib-ng
     Windows  ...\@img\sharp-win32-x64\lib\libvips-42.dll
              ...\@img\sharp-win32-x64\lib\libvips-cpp-8.18.3.dll
              ...\@img\sharp-win32-x64\lib\sharp-win32-x64-0.35.3.node
-    macOS    .../@img/sharp-libvips-darwin-<arch>/lib/libvips-cpp.8.18.3.dylib
-             .../@img/sharp-darwin-<arch>/lib/sharp-darwin-<arch>-0.35.3.node
 
   These files are not compressed into or otherwise merged with app.asar, and
   they are not statically linked into the application executable.
@@ -400,3 +385,177 @@ zlib-ng
   the Library the right to modify the Library and to reverse engineer for
   debugging such modifications; the applicable conditions are stated in the
   license texts reproduced in this directory and are not restated here.
+
+
+8. AI upscaling payload
+-----------------------
+
+  This application redistributes two prebuilt command-line executables and the
+  model files they load. They are fetched from the upstream release archives
+  named below by scripts/download-binaries.mjs and shipped as ordinary files
+  under resources/bin and resources/models. They are separate processes; they
+  are not linked into the application executable.
+
+  Component                  Distributed release      License
+  -------------------------  -----------------------  ----------------------
+  realesrgan-ncnn-vulkan     v0.2.5.0 / 20220424      MIT
+  Real-ESRGAN                v0.2.5.0 / 20220424      BSD-3-Clause
+  realcugan-ncnn-vulkan      20220728                 MIT
+  Real-CUGAN                 20220728                 MIT
+  ncnn                       statically linked        BSD-3-Clause
+
+  8.1 realesrgan-ncnn-vulkan
+
+  Distributed:   realesrgan-ncnn-vulkan(.exe), the executable published in the
+                 assets realesrgan-ncnn-vulkan-20220424-windows.zip and
+                 realesrgan-ncnn-vulkan-20220424-ubuntu.zip of release
+                 v0.2.5.0, plus the complete models directory from those same
+                 archives. Every model file it contains is redistributed, not
+                 only the ones this application invokes; the full list is in
+                 section 8.8.
+  Upstream:      https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan
+  Release:       https://github.com/xinntao/Real-ESRGAN/releases/tag/v0.2.5.0
+  Terms:         MIT
+  License text:  ai/realesrgan-ncnn-vulkan/LICENSE
+
+  The distributed archives contain no license file. The license text above is
+  the LICENSE file published by the executable's own source repository,
+  xinntao/Real-ESRGAN-ncnn-vulkan. It carries two copyright blocks,
+  "Copyright (c) 2021 Xintao Wang" and "Copyright (c) 2019 nihui", and both are
+  reproduced verbatim.
+
+  8.2 Real-ESRGAN
+
+  Distributed:   every model file (.param and .bin) produced by this project
+                 and shipped in the archives named in 8.1 - the
+                 realesrgan-x4plus, realesrgan-x4plus-anime and
+                 realesr-animevideov3 families, listed in full in section 8.8.
+                 No source or Python code from this project is shipped.
+  Upstream:      https://github.com/xinntao/Real-ESRGAN  (tag v0.2.5.0)
+  Terms:         BSD-3-Clause, "Copyright (c) 2021, Xintao Wang"
+  License text:  ai/real-esrgan/LICENSE
+
+  8.3 realcugan-ncnn-vulkan
+
+  Distributed:   realcugan-ncnn-vulkan(.exe), the executable published in the
+                 assets realcugan-ncnn-vulkan-20220728-windows.zip and
+                 realcugan-ncnn-vulkan-20220728-ubuntu.zip of release 20220728,
+                 plus the complete models-se, models-pro and models-nose
+                 directories from those same archives. Every model file they
+                 contain is redistributed, not only the ones this application
+                 invokes; see section 8.8.
+  Upstream:      https://github.com/nihui/realcugan-ncnn-vulkan
+  Release:       https://github.com/nihui/realcugan-ncnn-vulkan/releases/tag/20220728
+  Terms:         MIT, "Copyright (c) 2019 nihui"
+  License text:  ai/realcugan-ncnn-vulkan/LICENSE
+
+  The license text above is the LICENSE file at the root of the distributed
+  20220728 archive itself, copied byte-for-byte.
+
+  8.4 Real-CUGAN
+
+  Distributed:   every model file (.param and .bin) produced by this project
+                 and shipped in the archives named in 8.3, across all three
+                 model directories, listed in full in section 8.8. No source or
+                 Python code from this project is shipped.
+  Upstream:      https://github.com/bilibili/ailab  (Real-CUGAN, weights_v3)
+  Terms:         MIT, "Copyright (c) 2022 bilibili"
+  License text:  ai/real-cugan/LICENSE
+
+  bilibili/ailab publishes no repository-root license file. The license text
+  above is the LICENSE file published in that repository's Real-CUGAN
+  directory, which is the directory the distributed weights come from.
+
+  8.5 ncnn
+
+  Distributed:   ncnn is statically linked into both AI executables. All four
+                 upstream archives ship a single self-contained executable with
+                 no ncnn shared library beside it, so no separate ncnn binary is
+                 distributed.
+  Upstream:      https://github.com/Tencent/ncnn
+  Terms:         BSD-3-Clause, "Copyright (C) 2017 THL A29 Limited, a Tencent
+                 company", with zlib and BSD-2-Clause sub-notices for the
+                 third-party components inside ncnn
+  License text:  ai/ncnn/LICENSE.txt
+
+  The license text above is ncnn's LICENSE.txt as published at the tags
+  contemporaneous with the two distributed releases (20220420 and 20220729);
+  the two are byte-identical. It is reproduced in full so the zlib and
+  BSD-2-Clause sub-notices it contains travel with it.
+
+  8.6 Libraries compiled into the AI executables
+
+  Both upstream projects state in their READMEs that libwebp, stb and dirent are
+  compiled into the executables in addition to ncnn. libwebp is already covered
+  by section 3; its license texts are bundled/libwebp/COPYING and
+  bundled/libwebp/PATENTS and are not duplicated under ai/. Whether the exact
+  stb and dirent revisions compiled into these prebuilt executables carry terms
+  beyond those already reproduced here has not been determined from the
+  distributed binaries. LEGAL REVIEW RECOMMENDED.
+
+  8.7 Microsoft OpenMP runtime on Windows
+
+  The Windows payload includes vcomp140.dll, the unmodified Microsoft Visual C++
+  OpenMP release runtime as shipped inside the upstream Windows archives named
+  above. It is required at runtime: without it the executables fail to start. It
+  is declared in the build manifest and is the only library file staged beside
+  the executables on Windows.
+
+  No debug runtime is distributed. The upstream Real-ESRGAN Windows archive also
+  contains Microsoft's debug OpenMP runtime, which Microsoft's redistribution
+  terms place on the Utilities List for development and testing only. The
+  payload staging step uses an explicit per-platform allowlist, so that file is
+  never staged, never published into resources/bin and never packaged.
+
+  Microsoft's redistribution terms:
+  https://learn.microsoft.com/en-us/visualstudio/releases/2022/redistribution
+
+  No Microsoft license text is reproduced in this directory. Whether this
+  application's redistribution of vcomp140.dll is covered by those terms, which
+  condition distribution on the distributor being a licensed Visual Studio user,
+  has not been determined here. LEGAL REVIEW RECOMMENDED.
+
+  8.8 Model files
+
+  The build-time bootstrap copies the upstream model directories wholesale and
+  the packaging step ships resources/models wholesale, so every model file below
+  is redistributed with this application, as a .param and a .bin pair.
+
+  From realesrgan-ncnn-vulkan release v0.2.5.0, assets dated 20220424, under
+  realesrgan/:
+
+    realesrgan-x4plus
+    realesrgan-x4plus-anime
+    realesr-animevideov3-x2
+    realesr-animevideov3-x3
+    realesr-animevideov3-x4
+
+  From realcugan-ncnn-vulkan release 20220728, under realcugan/, the complete
+  models-se, models-pro and models-nose directories:
+
+    models-se     up2x-conservative, up2x-denoise1x, up2x-denoise2x,
+                  up2x-denoise3x, up2x-no-denoise, up3x-conservative,
+                  up3x-denoise3x, up3x-no-denoise, up4x-conservative,
+                  up4x-denoise3x, up4x-no-denoise
+    models-pro    up2x-conservative, up2x-denoise3x, up2x-no-denoise,
+                  up3x-conservative, up3x-denoise3x, up3x-no-denoise
+    models-nose   up2x-no-denoise
+
+  Shipped is not the same as used. This application invokes only
+  realesrgan-x4plus, and models-se/up2x-denoise2x, models-se/up3x-no-denoise and
+  models-se/up4x-no-denoise. The remaining files are redistributed because they
+  are part of the upstream directories that are copied and packaged as a whole.
+  The runtime selection is recorded in the build manifest in
+  scripts/download-binaries.mjs; this section describes what is distributed, not
+  what is invoked.
+
+  Neither upstream project publishes license terms specific to its model
+  weights. The terms recorded in 8.2 and 8.4 are the terms of the repositories
+  that publish those weights. Whether those repository-level terms govern the
+  weights themselves is recorded here, not resolved. LEGAL REVIEW RECOMMENDED.
+
+  8.9 Verbatim reproduction
+
+  Every license file under ai/ was copied byte-for-byte from the distributed
+  archive or from the upstream repository at the version named above. No license
+  text under ai/ has been retyped, summarised or edited.
